@@ -47,10 +47,14 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .stepper{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .stepper button{width:40px;height:40px;border:0;background:transparent;font-size:22px;line-height:1}
 .stepper span{min-width:64px;text-align:center;font-weight:600}
-.ex{display:grid;grid-template-columns:6px 1fr 84px 36px;gap:8px;align-items:center;margin-top:10px}
+.ex{display:grid;grid-template-columns:6px 1fr 50px 44px 28px;gap:6px;align-items:center;margin-top:10px}
 .ex .bar{height:36px;border-radius:3px}
-.ex input{width:100%;height:42px;border:1px solid var(--line);border-radius:8px;background:transparent;padding:0 10px}
-.ex input.reps{text-align:center}
+.ex input{width:100%;height:42px;border:1px solid var(--line);border-radius:8px;background:transparent;padding:0 8px}
+.ex input.reps{text-align:center;padding:0 4px}
+.ex .unit{height:42px;border:1px solid var(--line);border-radius:8px;background:transparent;font-weight:600;font-size:14px;padding:0}
+.ex .unit.t{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ex .del{width:28px !important}
+.test{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;font-size:14px;margin-left:auto}
 .ex .del{height:36px;width:36px;border:0;background:transparent;color:var(--mute);font-size:22px;border-radius:8px}
 .hint{color:var(--mute);font-size:13px;margin:8px 0 0}
 .add{margin-top:12px;border:1px dashed var(--line);background:transparent;border-radius:10px;height:42px;width:100%;color:var(--mute)}
@@ -155,7 +159,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
       </div>
     </div>
     <div id="emomList"></div>
-    <p class="hint">Laisse les répétitions vides pour un exercice « à la minute » (ex. step up pendant 1 min).</p>
+    <p class="hint">Touche l'unité pour choisir : <b>rép</b> = l'exercice dure 1 minute ; <b>sec</b> ou <b>min</b> = l'exercice dure ce temps-là, et la durée du round s'adapte.</p>
     <button type="button" class="add" id="emomAdd">Ajouter un exercice</button>
   </section>
 
@@ -183,15 +187,15 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     </div>
     <div id="finBody">
       <div class="row between" style="margin-top:12px">
-        <span>Durée par exercice</span>
-        <div class="stepper" role="group" aria-label="Durée de chaque exercice du finisher">
+        <span>Durée des exercices en rép</span>
+        <div class="stepper" role="group" aria-label="Durée des exercices du finisher comptés en répétitions">
           <button type="button" id="finMinus" aria-label="Moins une minute">−</button>
           <span id="finVal"></span>
           <button type="button" id="finPlus" aria-label="Plus une minute">+</button>
         </div>
       </div>
       <div id="finList"></div>
-      <p class="hint">Enchaîné une seule fois après le dernier round. Répétitions vides = exercice sur toute la durée (ex. planche).</p>
+      <p class="hint">Enchaîné une seule fois à la fin. Exercices en <b>rép</b> : durée ci-dessus ; en <b>sec</b> ou <b>min</b> : leur propre durée.</p>
       <button type="button" class="add" id="finAdd">Ajouter un exercice</button>
     </div>
   </section>
@@ -199,7 +203,8 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   <section class="board">
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
-    <label class="opt"><input type="checkbox" id="vib"> Vibrations / retour haptique</label>
+    <div class="opt"><label class="opt" style="margin:0"><input type="checkbox" id="vib"> Vibrations / retour haptique</label>
+      <button type="button" class="test" id="vibTest">Tester</button></div>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips. Sur iPhone, les vibrations passent par le retour haptique du système (iOS 18 ou plus récent, « Retour haptique système » activé).</p>
   </section>
 
@@ -257,7 +262,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-05.2';
+var VERSION = '2026-10-05.3';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -272,10 +277,10 @@ var DEFAULT = {
   rounds: 5,
   emom: [
     {n:'Burpees', r:12}, {n:'Squat jump', r:25}, {n:'Mountain climber', r:30},
-    {n:'Jumping jack', r:50}, {n:'Step up', r:null}
+    {n:'Jumping jack', r:50}, {n:'Step up', k:'time', t:60, u:'min'}
   ],
   fin: { on: true, minutes: 1, items: [
-    {n:'Push up', r:null}, {n:'Plank', r:null}
+    {n:'Push up', k:'time', t:60, u:'min'}, {n:'Plank', k:'time', t:60, u:'min'}
   ]},
   voice: true,
   en: true,
@@ -294,6 +299,11 @@ function load(){
         if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
         if(!c.amrap || !Array.isArray(c.amrap.items) || !c.amrap.items.length || !(c.amrap.minutes>0)) c.amrap = clone(DEFAULT.amrap);
         if(c.mode !== 'amrap') c.mode = 'emom';
+        /* anciennes séances : répétitions vides = exercice sur toute la durée */
+        var toTime = function(list, sec){ list.forEach(function(it){
+          if(!it.k && it.r == null){ it.k = 'time'; it.t = sec; it.u = sec % 60 ? 's' : 'min'; }
+        }); };
+        toTime(c.emom, 60); toTime(c.fin.items, c.fin.minutes*60);
         return c;
       }
     }
@@ -316,24 +326,53 @@ function renderList(host, list, color, onChange){
     var name = document.createElement('input'); name.type='text'; name.value = it.n; name.placeholder='Exercice';
     name.setAttribute('aria-label','Nom de l\'exercice '+(i+1));
     name.addEventListener('input', function(){ it.n = name.value; onChange(false); });
+    var unit = isTime(it) ? (it.u === 'min' ? 'min' : 's') : 'rep';
     var reps = document.createElement('input'); reps.type='number'; reps.min='1'; reps.className='reps';
-    reps.inputMode='numeric'; reps.value = it.r==null ? '' : it.r; reps.placeholder = '1 min';
-    reps.setAttribute('aria-label','Répétitions de l\'exercice '+(i+1));
-    reps.addEventListener('input', function(){ it.r = repsValue(reps.value); onChange(false); });
+    reps.inputMode='numeric';
+    reps.value = unit==='rep' ? (it.r==null ? '' : it.r) : unit==='min' ? Math.round(it.t/60) : it.t;
+    reps.placeholder = unit==='rep' ? '–' : unit==='min' ? '1' : '60';
+    reps.setAttribute('aria-label', (unit==='rep' ? 'Répétitions' : unit==='min' ? 'Durée en minutes' : 'Durée en secondes') + ' de l\'exercice '+(i+1));
+    reps.addEventListener('input', function(){
+      var v = repsValue(reps.value);
+      if(unit==='rep') it.r = v; else it.t = v ? (unit==='min' ? v*60 : v) : null;
+      onChange(false);
+    });
+    var ub = document.createElement('button'); ub.type='button'; ub.className = 'unit' + (unit==='rep' ? '' : ' t');
+    ub.textContent = unit==='rep' ? 'rép' : unit==='min' ? 'min' : 'sec';
+    ub.setAttribute('aria-label','Unité : ' + (unit==='rep' ? 'répétitions' : unit==='min' ? 'minutes' : 'secondes') + '. Toucher pour changer');
+    ub.addEventListener('click', function(){
+      if(unit==='rep'){ it.k='time'; it.u='s'; if(!(it.t>0)) it.t=60; }
+      else if(unit==='s'){ it.u='min'; it.t = Math.max(60, Math.round((it.t||60)/60)*60); }
+      else { it.k='rep'; }
+      onChange(true);
+    });
     var del = document.createElement('button'); del.type='button'; del.className='del'; del.textContent='×';
     del.setAttribute('aria-label','Supprimer '+(it.n||'cet exercice'));
     del.addEventListener('click', function(){
       if(list.length>1){ list.splice(i,1); onChange(true); }
     });
-    row.append(bar, name, reps, del);
+    row.append(bar, name, reps, ub, del);
     host.appendChild(row);
   });
 }
 
-function finMinutes(){ return cfg.fin.on ? cfg.fin.minutes * cfg.fin.items.length : 0; }
 function isAmrap(){ return cfg.mode === 'amrap'; }
-function mainMinutes(){ return isAmrap() ? cfg.amrap.minutes : cfg.rounds * cfg.emom.length; }
-function totalMinutes(){ return cfg.warm.minutes + mainMinutes() + finMinutes(); }
+function isTime(it){ return it.k === 'time'; }
+/* durée d'un exercice : son temps s'il est en temps, sinon repSec */
+function exSec(it, repSec){ return isTime(it) ? (it.t > 0 ? it.t : 60) : repSec; }
+function sumSec(list, repSec){ return list.reduce(function(a, it){ return a + exSec(it, repSec); }, 0); }
+function roundSec(){ return sumSec(cfg.emom, 60); }
+function finSec(){ return cfg.fin.on ? sumSec(cfg.fin.items, cfg.fin.minutes*60) : 0; }
+function mainSec(){ return isAmrap() ? cfg.amrap.minutes*60 : cfg.rounds * roundSec(); }
+function totalSec(){ return cfg.warm.minutes*60 + mainSec() + finSec(); }
+function durShort(sec){
+  var m = Math.floor(sec/60), r = sec % 60;
+  return !m ? r + ' s' : !r ? m + ' min' : m + ' min ' + (r<10?'0':'') + r;
+}
+function durSpoken(sec){
+  var m = Math.floor(sec/60), r = sec % 60;
+  return [m ? (m===1 ? 'une minute' : m + ' minutes') : '', r ? r + ' secondes' : ''].filter(Boolean).join(' ');
+}
 
 function renderSetup(){
   $('warmVal').textContent = cfg.warm.minutes + ' min';
@@ -356,9 +395,9 @@ function renderSetup(){
   updSummary();
 }
 function updSummary(){
-  $('summary').textContent = 'Durée totale : ' + totalMinutes() + ' min (' + cfg.warm.minutes +
-    ' min d\'échauffement + ' + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + cfg.emom.length + ' min') +
-    (cfg.fin.on ? ' + ' + finMinutes() + ' min de finisher' : '') + ')';
+  $('summary').textContent = 'Durée totale : ' + durShort(totalSec()) + ' (' + cfg.warm.minutes +
+    ' min d\'échauffement + ' + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + durShort(roundSec())) +
+    (cfg.fin.on ? ' + ' + durShort(finSec()) + ' de finisher' : '') + ')';
 }
 
 $('warmMinus').onclick = function(){ if(cfg.warm.minutes>1){ cfg.warm.minutes--; save(); renderSetup(); } };
@@ -479,14 +518,23 @@ document.addEventListener('visibilitychange', function(){
 /* ---------- Séance ---------- */
 var segs = [], starts = [], totalMs = 0, run = null, timer = null;
 
-function durText(min){ return min===1 ? '1 minute' : min + ' minutes'; }
-function repShort(it, min){ return it.r ? '× ' + it.r : durText(min||1); }
-function speakEx(it, min){
-  min = min||1;
-  return [exPart(it.n), {t: it.r ? it.r + ' répétitions' : 'pendant ' + (min===1 ? 'une minute' : min + ' minutes'), l:'fr'}];
+/* texte court : « × 12 », « 45 s », « 1 min 30 » ; sec = durée du créneau */
+function itemShort(it, sec){
+  if(isTime(it)) return durShort(exSec(it));
+  return it.r ? '× ' + it.r : (sec ? durShort(sec) : '');
+}
+function speakEx(it, sec){
+  return [exPart(it.n), {t: (!isTime(it) && it.r) ? it.r + ' répétitions' : 'pendant ' + durSpoken(sec), l:'fr'}];
+}
+function listSpeech(items){
+  var out = [];
+  items.forEach(function(it){
+    if(isTime(it)){ out.push(exPart(it.n)); out.push({t: durSpoken(exSec(it)), l:'fr'}); }
+    else { if(it.r) out.push({t: String(it.r), l:'fr'}); out.push(exPart(it.n)); }
+  });
+  return out;
 }
 function segColor(s){ return s.kind==='warm' ? 'green' : s.kind==='fin' ? 'violet' : s.kind==='amrap' ? 'red' : COLORS[s.idx % COLORS.length]; }
-function segMin(s){ return s.dur/60; }
 
 function build(){
   segs = [{kind:'warm', dur: cfg.warm.minutes*60}];
@@ -495,13 +543,13 @@ function build(){
   } else {
     for(var r=1;r<=cfg.rounds;r++){
       for(var i=0;i<cfg.emom.length;i++){
-        segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:60});
+        segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:exSec(cfg.emom[i], 60)});
       }
     }
   }
   if(cfg.fin.on){
     cfg.fin.items.forEach(function(it, i){
-      segs.push({kind:'fin', idx:i, ex:it, dur:cfg.fin.minutes*60});
+      segs.push({kind:'fin', idx:i, ex:it, dur:exSec(it, cfg.fin.minutes*60)});
     });
   }
   starts = []; var acc = 0;
@@ -517,24 +565,17 @@ function fmt(sec){ var m = Math.floor(sec/60), s = sec%60; return m + ':' + (s<1
 
 function buildStrip(){
   var host = $('strip'); host.textContent = '';
-  var w = document.createElement('div'); w.className='group w';
-  var wt = document.createElement('div'); wt.className='tick'; w.appendChild(wt); host.appendChild(w);
-  var nr = isAmrap() ? 1 : cfg.rounds, ne = isAmrap() ? 1 : cfg.emom.length;
-  for(var r=0;r<nr;r++){
-    var g = document.createElement('div'); g.className='group';
-    for(var i=0;i<ne;i++){
-      var t = document.createElement('div'); t.className='tick';
-      g.appendChild(t);
+  var g = null, key = null;
+  segs.forEach(function(sg){
+    var k = sg.kind === 'emom' ? 'r' + sg.round : sg.kind;
+    if(k !== key){
+      key = k; g = document.createElement('div');
+      g.className = 'group' + (sg.kind==='warm' ? ' w' : sg.kind==='fin' ? ' f' : '');
+      host.appendChild(g);
     }
-    host.appendChild(g);
-  }
-  if(cfg.fin.on){
-    var f = document.createElement('div'); f.className='group f';
-    cfg.fin.items.forEach(function(){
-      var t = document.createElement('div'); t.className='tick'; f.appendChild(t);
-    });
-    host.appendChild(f);
-  }
+    var t = document.createElement('div'); t.className = 'tick'; t.style.flexGrow = sg.dur;
+    g.appendChild(t);
+  });
 }
 function paintStrip(cur){
   var ticks = $('strip').querySelectorAll('.tick');
@@ -585,45 +626,40 @@ function enter(i){
     cfg.warm.items.forEach(function(it){
       var li = document.createElement('li');
       li.textContent = (it.n || 'Exercice') + ' ';
-      var sm = document.createElement('small'); sm.textContent = it.r ? '× ' + it.r : '';
+      var sm = document.createElement('small'); sm.textContent = itemShort(it);
       li.appendChild(sm); ul.appendChild(li);
     });
     $('next').textContent = isAmrap() ? 'Ensuite : AMRAP ' + cfg.amrap.minutes + ' min'
                                       : 'Ensuite : EMOM, round 1 · ' + (cfg.emom[0].n||'Exercice');
-    var wp = [{t:'Échauffement, ' + cfg.warm.minutes + ' minutes.', l:'fr'}];
-    cfg.warm.items.forEach(function(it){
-      if(it.r) wp.push({t: String(it.r), l:'fr'});
-      wp.push(exPart(it.n));
-    });
-    say(wp, 700);
+    say([{t:'Échauffement, ' + cfg.warm.minutes + ' minutes.', l:'fr'}].concat(listSpeech(cfg.warm.items)), 700);
   } else if(s.kind === 'amrap'){
     $('phase').textContent = 'AMRAP ' + cfg.amrap.minutes + ' min';
     var cl = $('amrapItems'); cl.textContent = '';
     cfg.amrap.items.forEach(function(it, k){
       var li = document.createElement('li'); li.className = COLORS[k % COLORS.length];
-      var sm = document.createElement('small'); sm.textContent = it.r ? it.r + ' ' : '';
-      li.appendChild(sm); li.appendChild(document.createTextNode(it.n || 'Exercice'));
+      var sm = document.createElement('small');
+      if(isTime(it)){
+        li.appendChild(document.createTextNode((it.n || 'Exercice') + ' '));
+        sm.textContent = durShort(exSec(it)); li.appendChild(sm);
+      } else {
+        sm.textContent = it.r ? it.r + ' ' : '';
+        li.appendChild(sm); li.appendChild(document.createTextNode(it.n || 'Exercice'));
+      }
       cl.appendChild(li);
     });
     $('next').textContent = nx ? 'Ensuite : Finisher · ' + (nx.ex.n||'Exercice') : '';
-    var ap = [{t:'AMRAP, ' + cfg.amrap.minutes + ' minutes.', l:'fr'}];
-    cfg.amrap.items.forEach(function(it){
-      if(it.r) ap.push({t: String(it.r), l:'fr'});
-      ap.push(exPart(it.n));
-    });
-    ap.push({t:'Partez !', l:'fr'});
-    say(ap, 700);
+    say([{t:'AMRAP, ' + cfg.amrap.minutes + ' minutes.', l:'fr'}].concat(listSpeech(cfg.amrap.items), [{t:'Partez !', l:'fr'}]), 700);
   } else {
     var fin = s.kind === 'fin';
     $('phase').textContent = fin ? 'Finisher ' + (s.idx+1) + ' sur ' + cfg.fin.items.length : 'Round ' + s.round + ' sur ' + cfg.rounds;
     $('exName').textContent = s.ex.n || 'Exercice';
-    $('exReps').textContent = s.ex.r ? repShort(s.ex) + ' répétitions' : durText(segMin(s));
-    if(!nx) $('next').textContent = segMin(s)===1 ? 'Dernière minute !' : 'Dernier exercice !';
-    else if(nx.kind==='fin') $('next').textContent = 'Ensuite : ' + (nx.idx===0 ? 'Finisher · ' : '') + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex, segMin(nx));
-    else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
+    $('exReps').textContent = (!isTime(s.ex) && s.ex.r) ? '× ' + s.ex.r + ' répétitions' : durShort(s.dur);
+    if(!nx) $('next').textContent = s.dur===60 ? 'Dernière minute !' : 'Dernier exercice !';
+    else if(nx.kind==='fin') $('next').textContent = 'Ensuite : ' + (nx.idx===0 ? 'Finisher · ' : '') + (nx.ex.n||'Exercice') + ' ' + itemShort(nx.ex, nx.dur);
+    else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + itemShort(nx.ex, nx.dur) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
     var intro = fin ? (s.idx === 0 ? 'Finisher. ' : '') : (s.idx === 0 ? 'Round ' + s.round + '. ' : '');
-    if(!nx) intro += segMin(s)===1 ? 'Dernière minute. ' : 'Dernier exercice. ';
-    say([{t:intro, l:'fr'}].concat(speakEx(s.ex, segMin(s))), 700);
+    if(!nx) intro += s.dur===60 ? 'Dernière minute. ' : 'Dernier exercice. ';
+    say([{t:intro, l:'fr'}].concat(speakEx(s.ex, s.dur)), 700);
   }
 }
 
@@ -677,6 +713,16 @@ function stopRun(){
   show('setup');
 }
 
+/* Diagnostic : une impulsion tout de suite (geste de l'utilisateur),
+   une autre 2 s plus tard (comme pendant la séance, sans geste). */
+$('vibTest').onclick = function(){
+  var pulse = function(){
+    if(navigator.vibrate){ try{ navigator.vibrate(200); }catch(e){} } else hapticTap();
+  };
+  pulse();
+  var b = this; b.textContent = '… 2 s';
+  setTimeout(function(){ pulse(); b.textContent = 'Tester'; }, 2000);
+};
 $('amAddRound').onclick = function(){
   if(!run || run.finished) return;
   run.amRounds++; $('amCount').textContent = run.amRounds;

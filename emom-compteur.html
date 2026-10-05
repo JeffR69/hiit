@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="fr" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compteur EMOM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9ECEF; --board:#FCFCFA; --ink:#18202E; --mute:#5E6878; --line:#CFD5DD;
+  --red:#D12F2F; --blue:#1F4FCF; --green:#0B8C68; --on-color:#fff;
+  --display:'Barlow Condensed','Arial Narrow',Impact,sans-serif;
+  --text:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1114; --board:#171B21; --ink:#F2F3EF; --mute:#9AA3B0; --line:#2B323C;
+    --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --on-color:#0E1114;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1114; --board:#171B21; --ink:#F2F3EF; --mute:#9AA3B0; --line:#2B323C;
+  --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --on-color:#0E1114;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--text);-webkit-tap-highlight-color:transparent}
+body{background:var(--bg)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.hidden{display:none !important}
+.wrap{max-width:560px;margin:0 auto;padding:18px 16px 40px}
+
+/* ---------- Réglages ---------- */
+.board{background:var(--board);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-bottom:14px}
+h1{font-family:var(--display);font-weight:800;font-size:44px;line-height:1;margin:6px 0 4px;letter-spacing:.5px}
+.sub{color:var(--mute);margin:0 0 16px;font-size:15px}
+h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-height:1.1}
+.row{display:flex;align-items:center;gap:10px}
+.row.between{justify-content:space-between}
+.stepper{display:inline-flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stepper button{width:40px;height:40px;border:0;background:transparent;font-size:22px;line-height:1}
+.stepper span{min-width:64px;text-align:center;font-weight:600}
+.ex{display:grid;grid-template-columns:6px 1fr 84px 36px;gap:8px;align-items:center;margin-top:10px}
+.ex .bar{height:36px;border-radius:3px}
+.ex input{width:100%;height:42px;border:1px solid var(--line);border-radius:8px;background:transparent;padding:0 10px}
+.ex input.reps{text-align:center}
+.ex .del{height:36px;width:36px;border:0;background:transparent;color:var(--mute);font-size:22px;border-radius:8px}
+.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
+.add{margin-top:12px;border:1px dashed var(--line);background:transparent;border-radius:10px;height:42px;width:100%;color:var(--mute)}
+.opt{display:flex;align-items:center;gap:10px;margin-top:6px}
+.opt input{width:22px;height:22px}
+.go{width:100%;height:68px;border:0;border-radius:14px;background:var(--red);color:var(--on-color);font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:1px;margin-top:6px}
+.link{border:0;background:transparent;color:var(--mute);text-decoration:underline;padding:12px 4px;font-size:14px}
+.red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)}
+.ex .bar,.chipbar{background:var(--c)}
+
+/* ---------- Séance ---------- */
+#run{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;max-width:620px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
+.top .phase{font-family:var(--display);font-size:26px;font-weight:700}
+.top .tot{color:var(--mute);font-variant-numeric:tabular-nums}
+.strip{display:flex;gap:10px;margin:10px 0 0;align-items:center}
+.group{display:flex;gap:3px;flex:1}
+.group.w{flex:0 0 18px}
+.tick{flex:1;height:8px;border-radius:2px;background:var(--line)}
+.tick.done{background:var(--ink)}
+.tick.now{background:var(--c,var(--ink));outline:2px solid var(--c,var(--ink));outline-offset:1px}
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;padding:10px 0}
+.exname{font-family:var(--display);font-weight:800;font-size:clamp(54px,17vw,104px);line-height:.92;color:var(--c);margin:0;text-transform:none;overflow-wrap:anywhere}
+.reps{font-family:var(--display);font-weight:700;font-size:clamp(34px,10vw,56px);margin:8px 0 0;line-height:1}
+.warmlist{list-style:none;margin:0;padding:0}
+.warmlist li{font-family:var(--display);font-weight:800;font-size:clamp(40px,12vw,66px);line-height:1;margin:0 0 8px;color:var(--c)}
+.warmlist li small{color:var(--ink);font-weight:700}
+.clock{font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums;font-size:clamp(88px,30vw,170px);line-height:.9;margin:18px 0 8px}
+.drain{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.drain i{display:block;height:100%;width:100%;background:var(--c);transform-origin:left center}
+.next{color:var(--mute);margin:14px 0 0;font-size:17px;min-height:26px}
+.ctrl{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;margin-top:14px}
+.ctrl button{height:64px;border-radius:14px;border:1px solid var(--line);background:var(--board);font-weight:600;font-size:17px}
+.ctrl .pause{background:var(--ink);color:var(--bg);border-color:var(--ink);font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:1px}
+.stop{align-self:center}
+.flash{animation:flash .6s ease-out}
+@keyframes flash{from{background:color-mix(in srgb,var(--c) 30%,var(--bg))}to{background:var(--bg)}}
+@media (prefers-reduced-motion: reduce){.flash{animation:none}}
+
+/* ---------- Fin ---------- */
+#done{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:560px;margin:0 auto;padding:20px 16px}
+#done h1{font-size:72px;color:var(--green)}
+</style>
+</head>
+<body>
+
+<!-- ===== Écran de réglages ===== -->
+<main id="setup" class="wrap">
+  <h1>Compteur EMOM</h1>
+  <p class="sub" id="summary"></p>
+
+  <section class="board green" aria-labelledby="hWarm">
+    <div class="row between">
+      <h2 id="hWarm">Échauffement</h2>
+      <div class="stepper" role="group" aria-label="Durée de l'échauffement">
+        <button type="button" id="warmMinus" aria-label="Moins une minute">−</button>
+        <span id="warmVal"></span>
+        <button type="button" id="warmPlus" aria-label="Plus une minute">+</button>
+      </div>
+    </div>
+    <div id="warmList"></div>
+    <button type="button" class="add" id="warmAdd">Ajouter un exercice</button>
+  </section>
+
+  <section class="board red" aria-labelledby="hEmom">
+    <div class="row between">
+      <h2 id="hEmom">EMOM · 1 exercice par minute</h2>
+    </div>
+    <div class="row between" style="margin-top:12px">
+      <span>Nombre de rounds</span>
+      <div class="stepper" role="group" aria-label="Nombre de rounds">
+        <button type="button" id="rMinus" aria-label="Un round de moins">−</button>
+        <span id="rVal"></span>
+        <button type="button" id="rPlus" aria-label="Un round de plus">+</button>
+      </div>
+    </div>
+    <div id="emomList"></div>
+    <p class="hint">Laisse les répétitions vides pour un exercice « à la minute » (ex. step up pendant 1 min).</p>
+    <button type="button" class="add" id="emomAdd">Ajouter un exercice</button>
+  </section>
+
+  <section class="board">
+    <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
+    <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
+    <label class="opt"><input type="checkbox" id="vib"> Vibrations (si le téléphone les permet)</label>
+    <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
+  </section>
+
+  <button type="button" class="go" id="start">DÉMARRER</button>
+  <div style="text-align:center"><button type="button" class="link" id="reset">Remettre la séance d'origine</button></div>
+</main>
+
+<!-- ===== Écran de séance ===== -->
+<main id="run" class="hidden" aria-live="off">
+  <div class="top">
+    <span class="phase" id="phase"></span>
+    <span class="tot" id="tot"></span>
+  </div>
+  <div class="strip" id="strip" aria-hidden="true"></div>
+
+  <div class="stage">
+    <div id="warmView" class="hidden">
+      <ul class="warmlist" id="warmItems"></ul>
+    </div>
+    <div id="emomView" class="hidden">
+      <h2 class="exname" id="exName"></h2>
+      <p class="reps" id="exReps"></p>
+    </div>
+    <div class="clock" id="clock" role="timer" aria-label="Temps restant">0:00</div>
+    <div class="drain" aria-hidden="true"><i id="drain"></i></div>
+    <p class="next" id="next"></p>
+  </div>
+
+  <div class="ctrl">
+    <button type="button" id="prev" aria-label="Revenir au début de l'étape">◀ Retour</button>
+    <button type="button" class="pause" id="pause">PAUSE</button>
+    <button type="button" id="skip" aria-label="Passer à l'étape suivante">Passer ▶</button>
+  </div>
+  <button type="button" class="link stop" id="stop">Arrêter la séance</button>
+</main>
+
+<!-- ===== Fin ===== -->
+<main id="done" class="hidden">
+  <h1>Séance terminée</h1>
+  <p class="sub" id="doneText"></p>
+  <button type="button" class="go" id="again" style="background:var(--ink);color:var(--bg)">RETOUR</button>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Données ---------- */
+var COLORS = ['red','blue','green'];
+var DEFAULT = {
+  warm: { minutes: 2, items: [
+    {n:'Squat', r:10}, {n:'Down up', r:10}, {n:'Plank jack', r:10}
+  ]},
+  rounds: 5,
+  emom: [
+    {n:'Burpees', r:12}, {n:'Squat jump', r:25}, {n:'Mountain climber', r:30},
+    {n:'Jumping jack', r:50}, {n:'Step up', r:null}
+  ],
+  voice: true,
+  en: true,
+  vib: true
+};
+var KEY = 'emom-config-v1';
+var cfg = load();
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){
+      var c = JSON.parse(raw);
+      if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0) return c;
+    }
+  }catch(e){}
+  return clone(DEFAULT);
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){} }
+
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- Écran de réglages ---------- */
+function repsValue(v){ v = parseInt(v,10); return (isFinite(v) && v>0) ? v : null; }
+
+function renderList(host, list, colored, onChange){
+  host.textContent = '';
+  list.forEach(function(it, i){
+    var row = document.createElement('div');
+    row.className = 'ex ' + (colored ? COLORS[i % COLORS.length] : 'green');
+    var bar = document.createElement('div'); bar.className = 'bar';
+    var name = document.createElement('input'); name.type='text'; name.value = it.n; name.placeholder='Exercice';
+    name.setAttribute('aria-label','Nom de l\'exercice '+(i+1));
+    name.addEventListener('input', function(){ it.n = name.value; onChange(false); });
+    var reps = document.createElement('input'); reps.type='number'; reps.min='1'; reps.className='reps';
+    reps.inputMode='numeric'; reps.value = it.r==null ? '' : it.r; reps.placeholder = '1 min';
+    reps.setAttribute('aria-label','Répétitions de l\'exercice '+(i+1));
+    reps.addEventListener('input', function(){ it.r = repsValue(reps.value); onChange(false); });
+    var del = document.createElement('button'); del.type='button'; del.className='del'; del.textContent='×';
+    del.setAttribute('aria-label','Supprimer '+(it.n||'cet exercice'));
+    del.addEventListener('click', function(){
+      if(list.length>1){ list.splice(i,1); onChange(true); }
+    });
+    row.append(bar, name, reps, del);
+    host.appendChild(row);
+  });
+}
+
+function totalMinutes(){ return cfg.warm.minutes + cfg.rounds * cfg.emom.length; }
+
+function renderSetup(){
+  $('warmVal').textContent = cfg.warm.minutes + ' min';
+  $('rVal').textContent = cfg.rounds;
+  $('voice').checked = !!cfg.voice;
+  $('en').checked = cfg.en !== false;
+  $('vib').checked = !!cfg.vib;
+  renderList($('warmList'), cfg.warm.items, false, function(full){ save(); if(full) renderSetup(); else updSummary(); });
+  renderList($('emomList'), cfg.emom, true, function(full){ save(); if(full) renderSetup(); else updSummary(); });
+  updSummary();
+}
+function updSummary(){
+  $('summary').textContent = 'Durée totale : ' + totalMinutes() + ' min (' + cfg.warm.minutes +
+    ' min d\'échauffement + ' + cfg.rounds + ' rounds × ' + cfg.emom.length + ' min)';
+}
+
+$('warmMinus').onclick = function(){ if(cfg.warm.minutes>1){ cfg.warm.minutes--; save(); renderSetup(); } };
+$('warmPlus').onclick  = function(){ if(cfg.warm.minutes<15){ cfg.warm.minutes++; save(); renderSetup(); } };
+$('rMinus').onclick = function(){ if(cfg.rounds>1){ cfg.rounds--; save(); renderSetup(); } };
+$('rPlus').onclick  = function(){ if(cfg.rounds<20){ cfg.rounds++; save(); renderSetup(); } };
+$('warmAdd').onclick = function(){ cfg.warm.items.push({n:'', r:10}); save(); renderSetup(); };
+$('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSetup(); };
+$('voice').onchange = function(){ cfg.voice = this.checked; save(); };
+$('en').onchange = function(){ cfg.en = this.checked; save(); };
+$('vib').onchange = function(){ cfg.vib = this.checked; save(); };
+$('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
+
+/* ---------- Son, voix, vibration ---------- */
+var ac = null;
+function unlockAudio(){
+  try{
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(AC && !ac) ac = new AC();
+    if(ac && ac.state === 'suspended') ac.resume();
+  }catch(e){}
+  try{
+    if('speechSynthesis' in window){
+      var u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u);
+    }
+  }catch(e){}
+}
+function tone(freq, dur, vol, when){
+  if(!ac) return;
+  try{
+    var t0 = ac.currentTime + (when||0);
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol||0.3, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }catch(e){}
+}
+function shortBeep(){ tone(880, 0.12, 0.25); }
+function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
+function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
+function buzz(p){ if(cfg.vib && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
+function pickVoice(prefix){
+  try{
+    var vs = speechSynthesis.getVoices();
+    for(var i=0;i<vs.length;i++){
+      var l = (vs[i].lang || '').toLowerCase().replace('_','-');
+      if(l.indexOf(prefix)===0) return vs[i];
+    }
+  }catch(e){}
+  return null;
+}
+/* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'} */
+function say(parts, delay){
+  if(!cfg.voice || !('speechSynthesis' in window)) return;
+  if(typeof parts === 'string') parts = [{t:parts, l:'fr'}];
+  parts = parts.filter(function(p){ return p && p.t; });
+  setTimeout(function(){
+    try{
+      speechSynthesis.cancel();
+      parts.forEach(function(p){
+        var u = new SpeechSynthesisUtterance(p.t);
+        u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
+        u.rate = (p.l === 'en') ? 1.0 : 1.05;
+        var v = pickVoice(p.l === 'en' ? 'en' : 'fr');
+        if(v) u.voice = v;
+        speechSynthesis.speak(u);
+      });
+    }catch(e){}
+  }, delay||0);
+}
+function exPart(name){ return {t: name || 'Exercice', l: (cfg.en === false) ? 'fr' : 'en'}; }
+
+/* ---------- Écran toujours allumé ---------- */
+var wakeLock = null;
+function requestWake(){
+  try{
+    if('wakeLock' in navigator){
+      navigator.wakeLock.request('screen').then(function(l){ wakeLock = l; }).catch(function(){});
+    }
+  }catch(e){}
+}
+function releaseWake(){ try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } }catch(e){} }
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && run && !run.finished) requestWake();
+});
+
+/* ---------- Séance ---------- */
+var segs = [], starts = [], totalMs = 0, run = null, timer = null;
+
+function repText(it){ return it.r ? it.r + ' répétitions' : 'pendant 1 minute'; }
+function repShort(it){ return it.r ? '× ' + it.r : '1 minute'; }
+function speakEx(it){
+  return [exPart(it.n), {t: it.r ? it.r + ' répétitions' : 'pendant une minute', l:'fr'}];
+}
+
+function build(){
+  segs = [{kind:'warm', dur: cfg.warm.minutes*60}];
+  for(var r=1;r<=cfg.rounds;r++){
+    for(var i=0;i<cfg.emom.length;i++){
+      segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:60});
+    }
+  }
+  starts = []; var acc = 0;
+  segs.forEach(function(s){ starts.push(acc); acc += s.dur*1000; });
+  totalMs = acc;
+}
+
+function show(id){
+  ['setup','run','done'].forEach(function(x){ $(x).classList.toggle('hidden', x!==id); });
+  window.scrollTo(0,0);
+}
+function fmt(sec){ var m = Math.floor(sec/60), s = sec%60; return m + ':' + (s<10?'0':'') + s; }
+
+function buildStrip(){
+  var host = $('strip'); host.textContent = '';
+  var w = document.createElement('div'); w.className='group w';
+  var wt = document.createElement('div'); wt.className='tick'; w.appendChild(wt); host.appendChild(w);
+  for(var r=0;r<cfg.rounds;r++){
+    var g = document.createElement('div'); g.className='group';
+    for(var i=0;i<cfg.emom.length;i++){
+      var t = document.createElement('div'); t.className='tick';
+      g.appendChild(t);
+    }
+    host.appendChild(g);
+  }
+}
+function paintStrip(cur){
+  var ticks = $('strip').querySelectorAll('.tick');
+  ticks.forEach(function(t, i){
+    t.classList.remove('done','now'); t.style.removeProperty('--c');
+    if(i < cur) t.classList.add('done');
+    else if(i === cur){
+      t.classList.add('now');
+      var s = segs[i];
+      t.style.setProperty('--c', 'var(--' + (s.kind==='warm' ? 'green' : COLORS[s.idx % COLORS.length]) + ')');
+    }
+  });
+}
+
+function startRun(){
+  build(); buildStrip();
+  unlockAudio(); requestWake();
+  run = { el:0, last:Date.now(), paused:false, seg:-1, lastSec:null, finished:false, confirmStop:false };
+  $('pause').textContent = 'PAUSE';
+  $('stop').textContent = 'Arrêter la séance';
+  show('run');
+  tick();
+  clearInterval(timer);
+  timer = setInterval(tick, 100);
+}
+
+function segAt(el){
+  for(var i=0;i<segs.length;i++){ if(el < starts[i] + segs[i].dur*1000) return i; }
+  return -1;
+}
+
+function enter(i){
+  var s = segs[i];
+  var cssColor = s.kind==='warm' ? 'green' : COLORS[s.idx % COLORS.length];
+  $('run').className = cssColor;
+  $('run').classList.remove('flash'); void $('run').offsetWidth; $('run').classList.add('flash');
+  longBeep(); buzz([250,100,250]);
+  paintStrip(i);
+
+  if(s.kind === 'warm'){
+    $('warmView').classList.remove('hidden'); $('emomView').classList.add('hidden');
+    $('phase').textContent = 'Échauffement';
+    var ul = $('warmItems'); ul.textContent = '';
+    cfg.warm.items.forEach(function(it){
+      var li = document.createElement('li');
+      li.textContent = (it.n || 'Exercice') + ' ';
+      var sm = document.createElement('small'); sm.textContent = it.r ? '× ' + it.r : '';
+      li.appendChild(sm); ul.appendChild(li);
+    });
+    $('next').textContent = 'Ensuite : EMOM, round 1 · ' + (cfg.emom[0].n||'Exercice');
+    var wp = [{t:'Échauffement, ' + cfg.warm.minutes + ' minutes.', l:'fr'}];
+    cfg.warm.items.forEach(function(it){
+      if(it.r) wp.push({t: String(it.r), l:'fr'});
+      wp.push(exPart(it.n));
+    });
+    say(wp, 700);
+  } else {
+    $('warmView').classList.add('hidden'); $('emomView').classList.remove('hidden');
+    $('phase').textContent = 'Round ' + s.round + ' sur ' + cfg.rounds;
+    $('exName').textContent = s.ex.n || 'Exercice';
+    $('exReps').textContent = repShort(s.ex) + (s.ex.r ? ' répétitions' : '');
+    var nx = segs[i+1];
+    if(!nx) $('next').textContent = 'Dernière minute !';
+    else if(nx.kind==='emom') $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
+    var intro = (s.idx === 0) ? 'Round ' + s.round + '. ' : '';
+    if(!nx && cfg.emom.length>0 && i===segs.length-1) intro += 'Dernière minute. ';
+    say([{t:intro, l:'fr'}].concat(speakEx(s.ex)), 700);
+  }
+}
+
+function tick(){
+  if(!run || run.finished) return;
+  var now = Date.now();
+  if(!run.paused) run.el += now - run.last;
+  run.last = now;
+
+  if(run.el >= totalMs){ finish(); return; }
+
+  var i = segAt(run.el);
+  if(i !== run.seg){
+    run.seg = i; run.lastSec = null; enter(i);
+  }
+  var s = segs[i];
+  var rem = s.dur*1000 - (run.el - starts[i]);
+  var secLeft = Math.ceil(rem/1000);
+  $('clock').textContent = fmt(secLeft);
+  $('drain').style.transform = 'scaleX(' + Math.max(0, rem/(s.dur*1000)) + ')';
+  $('tot').textContent = fmt(Math.floor(run.el/1000)) + ' / ' + fmt(Math.round(totalMs/1000));
+
+  if(secLeft !== run.lastSec){
+    run.lastSec = secLeft;
+    if(!run.paused){
+      if(secLeft>=1 && secLeft<=3){ shortBeep(); buzz(60); }
+      if(s.kind==='warm' && secLeft===10) say('Dix secondes', 0);
+    }
+  }
+}
+
+function finish(){
+  run.finished = true; clearInterval(timer);
+  releaseWake();
+  doneBeep(); buzz([300,150,300,150,600]);
+  say('Séance terminée. Bravo !', 800);
+  $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' + cfg.rounds + ' rounds d\'EMOM.';
+  show('done');
+}
+
+function stopRun(){
+  clearInterval(timer);
+  if(run) run.finished = true;
+  releaseWake();
+  try{ speechSynthesis.cancel(); }catch(e){}
+  show('setup');
+}
+
+$('start').onclick = startRun;
+$('again').onclick = function(){ show('setup'); };
+
+$('pause').onclick = function(){
+  if(!run || run.finished) return;
+  run.paused = !run.paused;
+  run.last = Date.now();
+  $('pause').textContent = run.paused ? 'REPRENDRE' : 'PAUSE';
+  if(run.paused){ try{ speechSynthesis.cancel(); }catch(e){} }
+  else { unlockAudio(); }
+};
+$('skip').onclick = function(){
+  if(!run || run.finished) return;
+  var n = run.seg + 1;
+  if(n >= segs.length){ finish(); return; }
+  run.el = starts[n]; run.last = Date.now(); tick();
+};
+$('prev').onclick = function(){
+  if(!run || run.finished) return;
+  var i = run.seg;
+  var target = (run.el - starts[i] > 3000 || i === 0) ? i : i - 1;
+  run.el = starts[target]; run.last = Date.now(); run.seg = -1; tick();
+};
+$('stop').onclick = function(){
+  if(!run.confirmStop){
+    run.confirmStop = true; $('stop').textContent = 'Appuie encore pour confirmer l\'arrêt';
+    setTimeout(function(){ if(run){ run.confirmStop = false; $('stop').textContent = 'Arrêter la séance'; } }, 3000);
+  } else { stopRun(); }
+};
+
+renderSetup();
+})();
+</script>
+</body>
+</html>

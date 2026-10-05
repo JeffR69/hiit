@@ -10,7 +10,7 @@
 <style>
 :root{
   --bg:#E9ECEF; --board:#FCFCFA; --ink:#18202E; --mute:#5E6878; --line:#CFD5DD;
-  --red:#D12F2F; --blue:#1F4FCF; --green:#0B8C68; --on-color:#fff;
+  --red:#D12F2F; --blue:#1F4FCF; --green:#0B8C68; --violet:#7A3FC4; --on-color:#fff;
   --display:'Barlow Condensed','Arial Narrow',Impact,sans-serif;
   --text:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   box-sizing:border-box;
@@ -20,12 +20,12 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0E1114; --board:#171B21; --ink:#F2F3EF; --mute:#9AA3B0; --line:#2B323C;
-    --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --on-color:#0E1114;
+    --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --violet:#B98CFF; --on-color:#0E1114;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0E1114; --board:#171B21; --ink:#F2F3EF; --mute:#9AA3B0; --line:#2B323C;
-  --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --on-color:#0E1114;
+  --red:#FF5C57; --blue:#6B9BFF; --green:#38DBAB; --violet:#B98CFF; --on-color:#0E1114;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
@@ -58,7 +58,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .opt input{width:22px;height:22px}
 .go{width:100%;height:68px;border:0;border-radius:14px;background:var(--red);color:var(--on-color);font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:1px;margin-top:6px}
 .link{border:0;background:transparent;color:var(--mute);text-decoration:underline;padding:12px 4px;font-size:14px}
-.red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)}
+.red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)} .violet{--c:var(--violet)}
 .ex .bar,.chipbar{background:var(--c)}
 
 /* ---------- Séance ---------- */
@@ -69,6 +69,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .strip{display:flex;gap:10px;margin:10px 0 0;align-items:center}
 .group{display:flex;gap:3px;flex:1}
 .group.w{flex:0 0 18px}
+.group.f{flex:0 0 40px}
 .tick{flex:1;height:8px;border-radius:2px;background:var(--line)}
 .tick.done{background:var(--ink)}
 .tick.now{background:var(--c,var(--ink));outline:2px solid var(--c,var(--ink));outline-offset:1px}
@@ -130,6 +131,26 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <div id="emomList"></div>
     <p class="hint">Laisse les répétitions vides pour un exercice « à la minute » (ex. step up pendant 1 min).</p>
     <button type="button" class="add" id="emomAdd">Ajouter un exercice</button>
+  </section>
+
+  <section class="board violet" id="finBoard" aria-labelledby="hFin">
+    <div class="row between">
+      <h2 id="hFin">Finisher</h2>
+      <label class="opt" style="margin:0"><input type="checkbox" id="finOn"> Activé</label>
+    </div>
+    <div id="finBody">
+      <div class="row between" style="margin-top:12px">
+        <span>Durée par exercice</span>
+        <div class="stepper" role="group" aria-label="Durée de chaque exercice du finisher">
+          <button type="button" id="finMinus" aria-label="Moins une minute">−</button>
+          <span id="finVal"></span>
+          <button type="button" id="finPlus" aria-label="Plus une minute">+</button>
+        </div>
+      </div>
+      <div id="finList"></div>
+      <p class="hint">Enchaîné une seule fois après le dernier round. Répétitions vides = exercice sur toute la durée (ex. planche).</p>
+      <button type="button" class="add" id="finAdd">Ajouter un exercice</button>
+    </div>
   </section>
 
   <section class="board">
@@ -194,6 +215,9 @@ var DEFAULT = {
     {n:'Burpees', r:12}, {n:'Squat jump', r:25}, {n:'Mountain climber', r:30},
     {n:'Jumping jack', r:50}, {n:'Step up', r:null}
   ],
+  fin: { on: true, minutes: 1, items: [
+    {n:'Push up', r:null}, {n:'Plank', r:null}
+  ]},
   voice: true,
   en: true,
   vib: true
@@ -207,7 +231,10 @@ function load(){
     var raw = localStorage.getItem(KEY);
     if(raw){
       var c = JSON.parse(raw);
-      if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0) return c;
+      if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0){
+        if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
+        return c;
+      }
     }
   }catch(e){}
   return clone(DEFAULT);
@@ -219,11 +246,11 @@ var $ = function(id){ return document.getElementById(id); };
 /* ---------- Écran de réglages ---------- */
 function repsValue(v){ v = parseInt(v,10); return (isFinite(v) && v>0) ? v : null; }
 
-function renderList(host, list, colored, onChange){
+function renderList(host, list, color, onChange){
   host.textContent = '';
   list.forEach(function(it, i){
     var row = document.createElement('div');
-    row.className = 'ex ' + (colored ? COLORS[i % COLORS.length] : 'green');
+    row.className = 'ex ' + (color || COLORS[i % COLORS.length]);
     var bar = document.createElement('div'); bar.className = 'bar';
     var name = document.createElement('input'); name.type='text'; name.value = it.n; name.placeholder='Exercice';
     name.setAttribute('aria-label','Nom de l\'exercice '+(i+1));
@@ -242,7 +269,8 @@ function renderList(host, list, colored, onChange){
   });
 }
 
-function totalMinutes(){ return cfg.warm.minutes + cfg.rounds * cfg.emom.length; }
+function finMinutes(){ return cfg.fin.on ? cfg.fin.minutes * cfg.fin.items.length : 0; }
+function totalMinutes(){ return cfg.warm.minutes + cfg.rounds * cfg.emom.length + finMinutes(); }
 
 function renderSetup(){
   $('warmVal').textContent = cfg.warm.minutes + ' min';
@@ -250,13 +278,18 @@ function renderSetup(){
   $('voice').checked = !!cfg.voice;
   $('en').checked = cfg.en !== false;
   $('vib').checked = !!cfg.vib;
-  renderList($('warmList'), cfg.warm.items, false, function(full){ save(); if(full) renderSetup(); else updSummary(); });
-  renderList($('emomList'), cfg.emom, true, function(full){ save(); if(full) renderSetup(); else updSummary(); });
+  $('finOn').checked = !!cfg.fin.on;
+  $('finVal').textContent = cfg.fin.minutes + ' min';
+  $('finBody').classList.toggle('hidden', !cfg.fin.on);
+  renderList($('finList'), cfg.fin.items, 'violet', function(full){ save(); if(full) renderSetup(); else updSummary(); });
+  renderList($('warmList'), cfg.warm.items, 'green', function(full){ save(); if(full) renderSetup(); else updSummary(); });
+  renderList($('emomList'), cfg.emom, null, function(full){ save(); if(full) renderSetup(); else updSummary(); });
   updSummary();
 }
 function updSummary(){
   $('summary').textContent = 'Durée totale : ' + totalMinutes() + ' min (' + cfg.warm.minutes +
-    ' min d\'échauffement + ' + cfg.rounds + ' rounds × ' + cfg.emom.length + ' min)';
+    ' min d\'échauffement + ' + cfg.rounds + ' rounds × ' + cfg.emom.length + ' min' +
+    (cfg.fin.on ? ' + ' + finMinutes() + ' min de finisher' : '') + ')';
 }
 
 $('warmMinus').onclick = function(){ if(cfg.warm.minutes>1){ cfg.warm.minutes--; save(); renderSetup(); } };
@@ -264,6 +297,10 @@ $('warmPlus').onclick  = function(){ if(cfg.warm.minutes<15){ cfg.warm.minutes++
 $('rMinus').onclick = function(){ if(cfg.rounds>1){ cfg.rounds--; save(); renderSetup(); } };
 $('rPlus').onclick  = function(){ if(cfg.rounds<20){ cfg.rounds++; save(); renderSetup(); } };
 $('warmAdd').onclick = function(){ cfg.warm.items.push({n:'', r:10}); save(); renderSetup(); };
+$('finMinus').onclick = function(){ if(cfg.fin.minutes>1){ cfg.fin.minutes--; save(); renderSetup(); } };
+$('finPlus').onclick  = function(){ if(cfg.fin.minutes<5){ cfg.fin.minutes++; save(); renderSetup(); } };
+$('finAdd').onclick = function(){ cfg.fin.items.push({n:'', r:null}); save(); renderSetup(); };
+$('finOn').onchange = function(){ cfg.fin.on = this.checked; save(); renderSetup(); };
 $('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSetup(); };
 $('voice').onchange = function(){ cfg.voice = this.checked; save(); };
 $('en').onchange = function(){ cfg.en = this.checked; save(); };
@@ -348,11 +385,14 @@ document.addEventListener('visibilitychange', function(){
 /* ---------- Séance ---------- */
 var segs = [], starts = [], totalMs = 0, run = null, timer = null;
 
-function repText(it){ return it.r ? it.r + ' répétitions' : 'pendant 1 minute'; }
-function repShort(it){ return it.r ? '× ' + it.r : '1 minute'; }
-function speakEx(it){
-  return [exPart(it.n), {t: it.r ? it.r + ' répétitions' : 'pendant une minute', l:'fr'}];
+function durText(min){ return min===1 ? '1 minute' : min + ' minutes'; }
+function repShort(it, min){ return it.r ? '× ' + it.r : durText(min||1); }
+function speakEx(it, min){
+  min = min||1;
+  return [exPart(it.n), {t: it.r ? it.r + ' répétitions' : 'pendant ' + (min===1 ? 'une minute' : min + ' minutes'), l:'fr'}];
 }
+function segColor(s){ return s.kind==='warm' ? 'green' : s.kind==='fin' ? 'violet' : COLORS[s.idx % COLORS.length]; }
+function segMin(s){ return s.dur/60; }
 
 function build(){
   segs = [{kind:'warm', dur: cfg.warm.minutes*60}];
@@ -360,6 +400,11 @@ function build(){
     for(var i=0;i<cfg.emom.length;i++){
       segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:60});
     }
+  }
+  if(cfg.fin.on){
+    cfg.fin.items.forEach(function(it, i){
+      segs.push({kind:'fin', idx:i, ex:it, dur:cfg.fin.minutes*60});
+    });
   }
   starts = []; var acc = 0;
   segs.forEach(function(s){ starts.push(acc); acc += s.dur*1000; });
@@ -384,6 +429,13 @@ function buildStrip(){
     }
     host.appendChild(g);
   }
+  if(cfg.fin.on){
+    var f = document.createElement('div'); f.className='group f';
+    cfg.fin.items.forEach(function(){
+      var t = document.createElement('div'); t.className='tick'; f.appendChild(t);
+    });
+    host.appendChild(f);
+  }
 }
 function paintStrip(cur){
   var ticks = $('strip').querySelectorAll('.tick');
@@ -393,7 +445,7 @@ function paintStrip(cur){
     else if(i === cur){
       t.classList.add('now');
       var s = segs[i];
-      t.style.setProperty('--c', 'var(--' + (s.kind==='warm' ? 'green' : COLORS[s.idx % COLORS.length]) + ')');
+      t.style.setProperty('--c', 'var(--' + segColor(s) + ')');
     }
   });
 }
@@ -417,8 +469,7 @@ function segAt(el){
 
 function enter(i){
   var s = segs[i];
-  var cssColor = s.kind==='warm' ? 'green' : COLORS[s.idx % COLORS.length];
-  $('run').className = cssColor;
+  $('run').className = segColor(s);
   $('run').classList.remove('flash'); void $('run').offsetWidth; $('run').classList.add('flash');
   longBeep(); buzz([250,100,250]);
   paintStrip(i);
@@ -442,15 +493,17 @@ function enter(i){
     say(wp, 700);
   } else {
     $('warmView').classList.add('hidden'); $('emomView').classList.remove('hidden');
-    $('phase').textContent = 'Round ' + s.round + ' sur ' + cfg.rounds;
+    var fin = s.kind === 'fin';
+    $('phase').textContent = fin ? 'Finisher ' + (s.idx+1) + ' sur ' + cfg.fin.items.length : 'Round ' + s.round + ' sur ' + cfg.rounds;
     $('exName').textContent = s.ex.n || 'Exercice';
-    $('exReps').textContent = repShort(s.ex) + (s.ex.r ? ' répétitions' : '');
+    $('exReps').textContent = s.ex.r ? repShort(s.ex) + ' répétitions' : durText(segMin(s));
     var nx = segs[i+1];
-    if(!nx) $('next').textContent = 'Dernière minute !';
-    else if(nx.kind==='emom') $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
-    var intro = (s.idx === 0) ? 'Round ' + s.round + '. ' : '';
-    if(!nx && cfg.emom.length>0 && i===segs.length-1) intro += 'Dernière minute. ';
-    say([{t:intro, l:'fr'}].concat(speakEx(s.ex)), 700);
+    if(!nx) $('next').textContent = segMin(s)===1 ? 'Dernière minute !' : 'Dernier exercice !';
+    else if(nx.kind==='fin') $('next').textContent = 'Ensuite : ' + (nx.idx===0 ? 'Finisher · ' : '') + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex, segMin(nx));
+    else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
+    var intro = fin ? (s.idx === 0 ? 'Finisher. ' : '') : (s.idx === 0 ? 'Round ' + s.round + '. ' : '');
+    if(!nx) intro += segMin(s)===1 ? 'Dernière minute. ' : 'Dernier exercice. ';
+    say([{t:intro, l:'fr'}].concat(speakEx(s.ex, segMin(s))), 700);
   }
 }
 
@@ -487,7 +540,7 @@ function finish(){
   releaseWake();
   doneBeep(); buzz([300,150,300,150,600]);
   say('Séance terminée. Bravo !', 800);
-  $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' + cfg.rounds + ' rounds d\'EMOM.';
+  $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' + cfg.rounds + ' rounds d\'EMOM' + (cfg.fin.on ? ' + finisher.' : '.');
   show('done');
 }
 

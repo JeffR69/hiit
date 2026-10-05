@@ -61,6 +61,14 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)} .violet{--c:var(--violet)}
 .ex .bar,.chipbar{background:var(--c)}
 
+/* ---------- Onglets / mise à jour ---------- */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid var(--line);border-radius:12px;background:var(--board);margin-bottom:14px}
+.tabs button{height:46px;border:0;border-radius:9px;background:transparent;font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:.5px;color:var(--mute)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.update{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--blue);color:var(--on-color);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600}
+.update button{border:0;border-radius:8px;background:var(--on-color);color:var(--blue);padding:8px 12px;font-weight:700;white-space:nowrap}
+.ver{color:var(--mute);font-size:12px;text-align:center;margin:4px 0 0}
+
 /* ---------- Séance ---------- */
 #run{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;max-width:620px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:baseline;font-weight:600}
@@ -75,7 +83,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .tick.now{background:var(--c,var(--ink));outline:2px solid var(--c,var(--ink));outline-offset:1px}
 .stage{flex:1;display:flex;flex-direction:column;justify-content:center;padding:10px 0}
 .exname{font-family:var(--display);font-weight:800;font-size:clamp(54px,17vw,104px);line-height:.92;color:var(--c);margin:0;text-transform:none;overflow-wrap:anywhere}
-.reps{font-family:var(--display);font-weight:700;font-size:clamp(34px,10vw,56px);margin:8px 0 0;line-height:1}
+.bigreps{font-family:var(--display);font-weight:700;font-size:clamp(34px,10vw,56px);margin:8px 0 0;line-height:1}
 .warmlist{list-style:none;margin:0;padding:0}
 .warmlist li{font-family:var(--display);font-weight:800;font-size:clamp(40px,12vw,66px);line-height:1;margin:0 0 8px;color:var(--c)}
 .warmlist li small{color:var(--ink);font-weight:700}
@@ -88,6 +96,15 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .ctrl .pause{background:var(--ink);color:var(--bg);border-color:var(--ink);font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:1px}
 .stop{align-self:center}
 .flash{animation:flash .6s ease-out}
+#run.am .clock{font-size:clamp(72px,24vw,140px);margin-top:10px}
+.circuit{list-style:none;margin:0;padding:0}
+.circuit li{font-family:var(--display);font-weight:800;font-size:clamp(28px,8vw,44px);line-height:1.05;margin:0 0 4px;color:var(--c)}
+.circuit li small{color:var(--ink);font-weight:700}
+.counter{display:grid;grid-template-columns:64px 1fr 1.5fr;gap:10px;align-items:center;margin-top:14px}
+.counter button{height:64px;border-radius:14px;border:1px solid var(--line);background:var(--board);font-size:28px;font-weight:600}
+.counter .plus{background:var(--c);color:var(--on-color);border-color:var(--c);font-family:var(--display);font-weight:800;font-size:28px;letter-spacing:.5px}
+.count{text-align:center;font-family:var(--display);font-weight:800;font-size:52px;line-height:1;font-variant-numeric:tabular-nums}
+.count small{display:block;font-family:var(--text);font-size:14px;font-weight:600;color:var(--mute)}
 @keyframes flash{from{background:color-mix(in srgb,var(--c) 30%,var(--bg))}to{background:var(--bg)}}
 @media (prefers-reduced-motion: reduce){.flash{animation:none}}
 
@@ -100,8 +117,17 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 
 <!-- ===== Écran de réglages ===== -->
 <main id="setup" class="wrap">
+  <div id="update" class="update hidden" role="status">
+    <span>Nouvelle version disponible</span>
+    <button type="button" id="updBtn">Mettre à jour</button>
+  </div>
   <h1>Compteur EMOM</h1>
   <p class="sub" id="summary"></p>
+
+  <div class="tabs" role="tablist" aria-label="Type de séance">
+    <button type="button" role="tab" id="tabEmom" aria-controls="emomBoard">EMOM</button>
+    <button type="button" role="tab" id="tabAmrap" aria-controls="amrapBoard">AMRAP</button>
+  </div>
 
   <section class="board green" aria-labelledby="hWarm">
     <div class="row between">
@@ -116,7 +142,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <button type="button" class="add" id="warmAdd">Ajouter un exercice</button>
   </section>
 
-  <section class="board red" aria-labelledby="hEmom">
+  <section class="board red" id="emomBoard" role="tabpanel" aria-labelledby="hEmom">
     <div class="row between">
       <h2 id="hEmom">EMOM · 1 exercice par minute</h2>
     </div>
@@ -131,6 +157,23 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <div id="emomList"></div>
     <p class="hint">Laisse les répétitions vides pour un exercice « à la minute » (ex. step up pendant 1 min).</p>
     <button type="button" class="add" id="emomAdd">Ajouter un exercice</button>
+  </section>
+
+  <section class="board red hidden" id="amrapBoard" role="tabpanel" aria-labelledby="hAmrap">
+    <div class="row between">
+      <h2 id="hAmrap">AMRAP · max de tours</h2>
+    </div>
+    <div class="row between" style="margin-top:12px">
+      <span>Durée</span>
+      <div class="stepper" role="group" aria-label="Durée de l'AMRAP">
+        <button type="button" id="amMinus" aria-label="Moins une minute">−</button>
+        <span id="amVal"></span>
+        <button type="button" id="amPlus" aria-label="Plus une minute">+</button>
+      </div>
+    </div>
+    <div id="amrapList"></div>
+    <p class="hint">Enchaîne le circuit en boucle pendant toute la durée et touche « +1 tour » à chaque tour terminé.</p>
+    <button type="button" class="add" id="amrapAdd">Ajouter un exercice</button>
   </section>
 
   <section class="board violet" id="finBoard" aria-labelledby="hFin">
@@ -156,12 +199,13 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   <section class="board">
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
-    <label class="opt"><input type="checkbox" id="vib"> Vibrations (si le téléphone les permet)</label>
-    <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
+    <label class="opt"><input type="checkbox" id="vib"> Vibrations / retour haptique</label>
+    <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips. Sur iPhone, les vibrations passent par le retour haptique du système (iOS 18 ou plus récent, « Retour haptique système » activé).</p>
   </section>
 
   <button type="button" class="go" id="start">DÉMARRER</button>
   <div style="text-align:center"><button type="button" class="link" id="reset">Remettre la séance d'origine</button></div>
+  <p class="ver">Version <span id="ver"></span></p>
 </main>
 
 <!-- ===== Écran de séance ===== -->
@@ -178,7 +222,15 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     </div>
     <div id="emomView" class="hidden">
       <h2 class="exname" id="exName"></h2>
-      <p class="reps" id="exReps"></p>
+      <p class="bigreps" id="exReps"></p>
+    </div>
+    <div id="amrapView" class="hidden">
+      <ul class="circuit" id="amrapItems"></ul>
+      <div class="counter">
+        <button type="button" id="amUndo" aria-label="Retirer un tour">−</button>
+        <div class="count" aria-live="polite"><span id="amCount">0</span><small>tours</small></div>
+        <button type="button" class="plus" id="amAddRound">+1 TOUR</button>
+      </div>
     </div>
     <div class="clock" id="clock" role="timer" aria-label="Temps restant">0:00</div>
     <div class="drain" aria-hidden="true"><i id="drain"></i></div>
@@ -204,11 +256,18 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 (function(){
 'use strict';
 
+/* À changer à chaque publication : sert à détecter une nouvelle version. */
+var VERSION = '2026-10-05.2';
+
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
 var DEFAULT = {
   warm: { minutes: 2, items: [
     {n:'Squat', r:10}, {n:'Down up', r:10}, {n:'Plank jack', r:10}
+  ]},
+  mode: 'emom',
+  amrap: { minutes: 12, items: [
+    {n:'Burpees', r:10}, {n:'Squat jump', r:15}, {n:'Mountain climber', r:20}
   ]},
   rounds: 5,
   emom: [
@@ -233,6 +292,8 @@ function load(){
       var c = JSON.parse(raw);
       if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0){
         if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
+        if(!c.amrap || !Array.isArray(c.amrap.items) || !c.amrap.items.length || !(c.amrap.minutes>0)) c.amrap = clone(DEFAULT.amrap);
+        if(c.mode !== 'amrap') c.mode = 'emom';
         return c;
       }
     }
@@ -270,7 +331,9 @@ function renderList(host, list, color, onChange){
 }
 
 function finMinutes(){ return cfg.fin.on ? cfg.fin.minutes * cfg.fin.items.length : 0; }
-function totalMinutes(){ return cfg.warm.minutes + cfg.rounds * cfg.emom.length + finMinutes(); }
+function isAmrap(){ return cfg.mode === 'amrap'; }
+function mainMinutes(){ return isAmrap() ? cfg.amrap.minutes : cfg.rounds * cfg.emom.length; }
+function totalMinutes(){ return cfg.warm.minutes + mainMinutes() + finMinutes(); }
 
 function renderSetup(){
   $('warmVal').textContent = cfg.warm.minutes + ' min';
@@ -278,6 +341,12 @@ function renderSetup(){
   $('voice').checked = !!cfg.voice;
   $('en').checked = cfg.en !== false;
   $('vib').checked = !!cfg.vib;
+  $('tabEmom').setAttribute('aria-selected', String(!isAmrap()));
+  $('tabAmrap').setAttribute('aria-selected', String(isAmrap()));
+  $('emomBoard').classList.toggle('hidden', isAmrap());
+  $('amrapBoard').classList.toggle('hidden', !isAmrap());
+  $('amVal').textContent = cfg.amrap.minutes + ' min';
+  renderList($('amrapList'), cfg.amrap.items, null, function(full){ save(); if(full) renderSetup(); else updSummary(); });
   $('finOn').checked = !!cfg.fin.on;
   $('finVal').textContent = cfg.fin.minutes + ' min';
   $('finBody').classList.toggle('hidden', !cfg.fin.on);
@@ -288,7 +357,7 @@ function renderSetup(){
 }
 function updSummary(){
   $('summary').textContent = 'Durée totale : ' + totalMinutes() + ' min (' + cfg.warm.minutes +
-    ' min d\'échauffement + ' + cfg.rounds + ' rounds × ' + cfg.emom.length + ' min' +
+    ' min d\'échauffement + ' + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + cfg.emom.length + ' min') +
     (cfg.fin.on ? ' + ' + finMinutes() + ' min de finisher' : '') + ')';
 }
 
@@ -297,6 +366,11 @@ $('warmPlus').onclick  = function(){ if(cfg.warm.minutes<15){ cfg.warm.minutes++
 $('rMinus').onclick = function(){ if(cfg.rounds>1){ cfg.rounds--; save(); renderSetup(); } };
 $('rPlus').onclick  = function(){ if(cfg.rounds<20){ cfg.rounds++; save(); renderSetup(); } };
 $('warmAdd').onclick = function(){ cfg.warm.items.push({n:'', r:10}); save(); renderSetup(); };
+$('tabEmom').onclick = function(){ cfg.mode = 'emom'; save(); renderSetup(); };
+$('tabAmrap').onclick = function(){ cfg.mode = 'amrap'; save(); renderSetup(); };
+$('amMinus').onclick = function(){ if(cfg.amrap.minutes>1){ cfg.amrap.minutes--; save(); renderSetup(); } };
+$('amPlus').onclick  = function(){ if(cfg.amrap.minutes<60){ cfg.amrap.minutes++; save(); renderSetup(); } };
+$('amrapAdd').onclick = function(){ cfg.amrap.items.push({n:'', r:10}); save(); renderSetup(); };
 $('finMinus').onclick = function(){ if(cfg.fin.minutes>1){ cfg.fin.minutes--; save(); renderSetup(); } };
 $('finPlus').onclick  = function(){ if(cfg.fin.minutes<5){ cfg.fin.minutes++; save(); renderSetup(); } };
 $('finAdd').onclick = function(){ cfg.fin.items.push({n:'', r:null}); save(); renderSetup(); };
@@ -336,7 +410,27 @@ function tone(freq, dur, vol, when){
 function shortBeep(){ tone(880, 0.12, 0.25); }
 function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
-function buzz(p){ if(cfg.vib && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
+/* iOS ne gère pas navigator.vibrate. Depuis iOS 18, basculer un
+   <input type="checkbox" switch> déclenche le retour haptique du système. */
+var haptic = null;
+function hapticTap(){
+  try{
+    if(!haptic){
+      haptic = document.createElement('label');
+      haptic.setAttribute('aria-hidden','true');
+      haptic.style.cssText = 'position:fixed;left:-200px;top:0;width:1px;height:1px;overflow:hidden';
+      var sw = document.createElement('input'); sw.type = 'checkbox'; sw.setAttribute('switch',''); sw.tabIndex = -1;
+      haptic.appendChild(sw); document.body.appendChild(haptic);
+    }
+    haptic.click();
+  }catch(e){}
+}
+function buzz(p){
+  if(!cfg.vib) return;
+  if(navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} return; }
+  var n = Array.isArray(p) ? Math.ceil(p.length/2) : 1;
+  for(var k=0;k<n;k++) setTimeout(hapticTap, k*200);
+}
 function pickVoice(prefix){
   try{
     var vs = speechSynthesis.getVoices();
@@ -391,14 +485,18 @@ function speakEx(it, min){
   min = min||1;
   return [exPart(it.n), {t: it.r ? it.r + ' répétitions' : 'pendant ' + (min===1 ? 'une minute' : min + ' minutes'), l:'fr'}];
 }
-function segColor(s){ return s.kind==='warm' ? 'green' : s.kind==='fin' ? 'violet' : COLORS[s.idx % COLORS.length]; }
+function segColor(s){ return s.kind==='warm' ? 'green' : s.kind==='fin' ? 'violet' : s.kind==='amrap' ? 'red' : COLORS[s.idx % COLORS.length]; }
 function segMin(s){ return s.dur/60; }
 
 function build(){
   segs = [{kind:'warm', dur: cfg.warm.minutes*60}];
-  for(var r=1;r<=cfg.rounds;r++){
-    for(var i=0;i<cfg.emom.length;i++){
-      segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:60});
+  if(isAmrap()){
+    segs.push({kind:'amrap', dur: cfg.amrap.minutes*60});
+  } else {
+    for(var r=1;r<=cfg.rounds;r++){
+      for(var i=0;i<cfg.emom.length;i++){
+        segs.push({kind:'emom', round:r, idx:i, ex:cfg.emom[i], dur:60});
+      }
     }
   }
   if(cfg.fin.on){
@@ -421,9 +519,10 @@ function buildStrip(){
   var host = $('strip'); host.textContent = '';
   var w = document.createElement('div'); w.className='group w';
   var wt = document.createElement('div'); wt.className='tick'; w.appendChild(wt); host.appendChild(w);
-  for(var r=0;r<cfg.rounds;r++){
+  var nr = isAmrap() ? 1 : cfg.rounds, ne = isAmrap() ? 1 : cfg.emom.length;
+  for(var r=0;r<nr;r++){
     var g = document.createElement('div'); g.className='group';
-    for(var i=0;i<cfg.emom.length;i++){
+    for(var i=0;i<ne;i++){
       var t = document.createElement('div'); t.className='tick';
       g.appendChild(t);
     }
@@ -453,7 +552,8 @@ function paintStrip(cur){
 function startRun(){
   build(); buildStrip();
   unlockAudio(); requestWake();
-  run = { el:0, last:Date.now(), paused:false, seg:-1, lastSec:null, finished:false, confirmStop:false };
+  run = { el:0, last:Date.now(), paused:false, seg:-1, lastSec:null, finished:false, confirmStop:false, amRounds:0 };
+  $('amCount').textContent = '0';
   $('pause').textContent = 'PAUSE';
   $('stop').textContent = 'Arrêter la séance';
   show('run');
@@ -469,13 +569,17 @@ function segAt(el){
 
 function enter(i){
   var s = segs[i];
-  $('run').className = segColor(s);
+  $('run').className = segColor(s) + (s.kind==='amrap' ? ' am' : '');
   $('run').classList.remove('flash'); void $('run').offsetWidth; $('run').classList.add('flash');
   longBeep(); buzz([250,100,250]);
   paintStrip(i);
 
+  $('warmView').classList.toggle('hidden', s.kind !== 'warm');
+  $('amrapView').classList.toggle('hidden', s.kind !== 'amrap');
+  $('emomView').classList.toggle('hidden', s.kind !== 'emom' && s.kind !== 'fin');
+  var nx = segs[i+1];
+
   if(s.kind === 'warm'){
-    $('warmView').classList.remove('hidden'); $('emomView').classList.add('hidden');
     $('phase').textContent = 'Échauffement';
     var ul = $('warmItems'); ul.textContent = '';
     cfg.warm.items.forEach(function(it){
@@ -484,20 +588,36 @@ function enter(i){
       var sm = document.createElement('small'); sm.textContent = it.r ? '× ' + it.r : '';
       li.appendChild(sm); ul.appendChild(li);
     });
-    $('next').textContent = 'Ensuite : EMOM, round 1 · ' + (cfg.emom[0].n||'Exercice');
+    $('next').textContent = isAmrap() ? 'Ensuite : AMRAP ' + cfg.amrap.minutes + ' min'
+                                      : 'Ensuite : EMOM, round 1 · ' + (cfg.emom[0].n||'Exercice');
     var wp = [{t:'Échauffement, ' + cfg.warm.minutes + ' minutes.', l:'fr'}];
     cfg.warm.items.forEach(function(it){
       if(it.r) wp.push({t: String(it.r), l:'fr'});
       wp.push(exPart(it.n));
     });
     say(wp, 700);
+  } else if(s.kind === 'amrap'){
+    $('phase').textContent = 'AMRAP ' + cfg.amrap.minutes + ' min';
+    var cl = $('amrapItems'); cl.textContent = '';
+    cfg.amrap.items.forEach(function(it, k){
+      var li = document.createElement('li'); li.className = COLORS[k % COLORS.length];
+      var sm = document.createElement('small'); sm.textContent = it.r ? it.r + ' ' : '';
+      li.appendChild(sm); li.appendChild(document.createTextNode(it.n || 'Exercice'));
+      cl.appendChild(li);
+    });
+    $('next').textContent = nx ? 'Ensuite : Finisher · ' + (nx.ex.n||'Exercice') : '';
+    var ap = [{t:'AMRAP, ' + cfg.amrap.minutes + ' minutes.', l:'fr'}];
+    cfg.amrap.items.forEach(function(it){
+      if(it.r) ap.push({t: String(it.r), l:'fr'});
+      ap.push(exPart(it.n));
+    });
+    ap.push({t:'Partez !', l:'fr'});
+    say(ap, 700);
   } else {
-    $('warmView').classList.add('hidden'); $('emomView').classList.remove('hidden');
     var fin = s.kind === 'fin';
     $('phase').textContent = fin ? 'Finisher ' + (s.idx+1) + ' sur ' + cfg.fin.items.length : 'Round ' + s.round + ' sur ' + cfg.rounds;
     $('exName').textContent = s.ex.n || 'Exercice';
     $('exReps').textContent = s.ex.r ? repShort(s.ex) + ' répétitions' : durText(segMin(s));
-    var nx = segs[i+1];
     if(!nx) $('next').textContent = segMin(s)===1 ? 'Dernière minute !' : 'Dernier exercice !';
     else if(nx.kind==='fin') $('next').textContent = 'Ensuite : ' + (nx.idx===0 ? 'Finisher · ' : '') + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex, segMin(nx));
     else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + repShort(nx.ex) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
@@ -530,7 +650,9 @@ function tick(){
     run.lastSec = secLeft;
     if(!run.paused){
       if(secLeft>=1 && secLeft<=3){ shortBeep(); buzz(60); }
-      if(s.kind==='warm' && secLeft===10) say('Dix secondes', 0);
+      if((s.kind==='warm' || s.kind==='amrap') && secLeft===10) say('Dix secondes', 0);
+      if(s.kind==='amrap' && s.dur>120 && secLeft===60) say('Plus qu\'une minute', 0);
+      if(s.kind==='amrap' && s.dur>=600 && secLeft*2===s.dur) say('Mi-temps. ' + run.amRounds + (run.amRounds>1 ? ' tours' : ' tour'), 0);
     }
   }
 }
@@ -539,8 +661,11 @@ function finish(){
   run.finished = true; clearInterval(timer);
   releaseWake();
   doneBeep(); buzz([300,150,300,150,600]);
-  say('Séance terminée. Bravo !', 800);
-  $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' + cfg.rounds + ' rounds d\'EMOM' + (cfg.fin.on ? ' + finisher.' : '.');
+  var tours = run.amRounds + (run.amRounds>1 ? ' tours' : ' tour');
+  say(isAmrap() ? 'Séance terminée. ' + tours + '. Bravo !' : 'Séance terminée. Bravo !', 800);
+  $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' +
+    (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min : ' + tours : cfg.rounds + ' rounds d\'EMOM') +
+    (cfg.fin.on ? ' + finisher.' : '.');
   show('done');
 }
 
@@ -551,6 +676,36 @@ function stopRun(){
   try{ speechSynthesis.cancel(); }catch(e){}
   show('setup');
 }
+
+$('amAddRound').onclick = function(){
+  if(!run || run.finished) return;
+  run.amRounds++; $('amCount').textContent = run.amRounds;
+  tone(1046, 0.1, 0.25); buzz(40);
+};
+$('amUndo').onclick = function(){
+  if(!run || run.finished || run.amRounds<=0) return;
+  run.amRounds--; $('amCount').textContent = run.amRounds;
+};
+
+/* ---------- Mise à jour (écran d'accueil iOS) ---------- */
+var newVersion = null;
+function checkUpdate(){
+  if(!/^https?:$/.test(location.protocol) || !window.fetch) return;
+  fetch(location.pathname + '?check=' + Date.now(), {cache:'no-store'})
+    .then(function(r){ return r.ok ? r.text() : ''; })
+    .then(function(t){
+      var m = /var VERSION = '([^']+)'/.exec(t);
+      if(m && m[1] !== VERSION){ newVersion = m[1]; $('update').classList.remove('hidden'); }
+    }).catch(function(){});
+}
+$('updBtn').onclick = function(){
+  location.replace(location.pathname + '?v=' + encodeURIComponent(newVersion || Date.now()));
+};
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible' && !(run && !run.finished)) checkUpdate();
+});
+$('ver').textContent = VERSION;
+checkUpdate();
 
 $('start').onclick = startRun;
 $('again').onclick = function(){ show('setup'); };

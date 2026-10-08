@@ -60,6 +60,13 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .ex .del{width:28px !important}
 .ex .del{height:36px;width:36px;border:0;background:transparent;color:var(--mute);font-size:22px;border-radius:8px}
 .hint{color:var(--mute);font-size:13px;margin:8px 0 0}
+.sugg{margin:6px 0 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--board);overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.sg{display:flex;align-items:center;border-top:1px solid var(--line)}
+.sg:first-child{border-top:0}
+.sg .pick{flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;border:0;background:transparent;padding:0 12px;text-align:left;font-size:16px}
+.sg .pick small{color:var(--mute);font-size:12px;white-space:nowrap}
+.sg .pick small.mine{color:var(--blue);font-weight:600}
+.sg .rm{flex:0 0 44px;height:44px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--mute);font-size:20px}
 .add{margin-top:12px;border:1px dashed var(--line);background:transparent;border-radius:10px;height:42px;width:100%;color:var(--mute)}
 .opt{display:flex;align-items:center;gap:10px;margin-top:6px}
 .opt input{width:22px;height:22px}
@@ -136,6 +143,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <button type="button" role="tab" id="tabEmom" aria-controls="emomBoard">EMOM</button>
     <button type="button" role="tab" id="tabAmrap" aria-controls="amrapBoard">AMRAP</button>
   </div>
+  <p class="hint" style="margin:-4px 0 14px">Pour nommer un exercice, tape quelques lettres et choisis dans la liste, ou écris le tien : il sera retenu.</p>
 
   <section class="board green" aria-labelledby="hWarm">
     <div class="row between">
@@ -271,7 +279,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-08.3';
+var VERSION = '2026-10-08.4';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -324,10 +332,112 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){
 
 var $ = function(id){ return document.getElementById(id); };
 
+/* ---------- Liste d'exercices ---------- */
+var EXERCISES = [
+  ["Poids du corps", "Squat|Air squat|Squat jump|Sumo squat|Pistol squat|Wall sit|Lunges|Walking lunges|Reverse lunges|Jumping lunges|Lateral lunges|Curtsy lunges|Bulgarian split squat|Glute bridge|Single leg glute bridge|Calf raises|Burpees|Burpee broad jump|Down up|Sprawl|Push up|Wide push up|Diamond push up|Pike push up|Hand release push up|Decline push up|Handstand push up|Bench dips|Plank|Side plank|Plank jack|Plank shoulder taps|Plank up down|Bear crawl|Bear plank|Crab walk|Inchworm|Mountain climber|Cross body mountain climber|Jumping jack|Star jump|Seal jack|Skater jumps|Tuck jumps|Broad jump|Frog jumps|High knees|Butt kicks|Fast feet|Lateral shuffle|Sit up|Crunches|Bicycle crunches|Russian twist|V ups|Tuck ups|Leg raises|Flutter kicks|Scissor kicks|Hollow hold|Hollow rocks|Superman|Dead bug|Bird dog|Toe touches|Heel taps|Shadow boxing|Sprint|Run|Shuttle run|Agility ladder"],
+  ["Barre de traction", "Pull up|Chin up|Kipping pull up|Chest to bar pull up|Burpee pull up|Toes to bar|Knees to elbow|Hanging knee raises|Hanging leg raises|Dead hang|Bar muscle up"],
+  ["Box", "Box jump|Box jump over|Burpee box jump over|Step up|Box step over|Lateral box jump"],
+  ["Corde à sauter", "Jump rope|Single unders|Double unders|Jump rope high knees"],
+  ["Kettlebell", "Kettlebell swing|American kettlebell swing|Single arm kettlebell swing|Goblet squat|Kettlebell deadlift|Kettlebell sumo deadlift high pull|Kettlebell clean|Kettlebell clean and press|Kettlebell snatch|Kettlebell press|Kettlebell push press|Kettlebell thruster|Kettlebell row|Kettlebell high pull|Turkish get up|Kettlebell windmill|Kettlebell halo|Kettlebell around the world|Kettlebell figure 8|Kettlebell farmer carry|Kettlebell lunges|Kettlebell Russian twist|Kettlebell goblet lunge"],
+  ["Haltères", "Dumbbell thruster|Dumbbell snatch|Dumbbell clean|Dumbbell hang clean|Dumbbell clean and jerk|Devil press|Man maker|Renegade row|Dumbbell row|Dumbbell bench press|Dumbbell floor press|Dumbbell shoulder press|Dumbbell push press|Arnold press|Lateral raises|Front raises|Bicep curls|Hammer curls|Tricep extension|Tricep kickbacks|Dumbbell deadlift|Dumbbell Romanian deadlift|Dumbbell squat|Dumbbell lunges|Dumbbell step up|Dumbbell box step over|Dumbbell farmer carry|Dumbbell fly|Dumbbell pullover|Dumbbell burpee|Dumbbell overhead lunge"],
+  ["Barre", "Deadlift|Back squat|Front squat|Overhead squat|Bench press|Overhead press|Push press|Push jerk|Thruster|Power clean|Hang power clean|Squat clean|Clean and jerk|Power snatch|Hang power snatch|Squat snatch|Bent over row|Barbell hip thrust|Romanian deadlift|Sumo deadlift high pull|Barbell lunges|Good morning|Barbell curl"],
+  ["Medicine ball", "Wall ball|Medicine ball slam|Slam ball|Medicine ball chest pass|Medicine ball Russian twist|Medicine ball sit up|Medicine ball clean|Medicine ball rotational throw|Medicine ball squat"],
+  ["Cardio machine", "Rower|Elliptical|Assault bike|Echo bike|Bike erg|Ski erg|Stationary bike|Spin bike|Treadmill run|Treadmill sprint|Treadmill incline walk|Curved treadmill|Stair climber|Versaclimber"],
+  ["Battle rope", "Battle rope waves|Battle rope alternating waves|Battle rope slams|Battle rope circles|Battle rope jumping jacks"],
+  ["Traîneau", "Sled push|Sled pull|Sled drag"],
+  ["Sandbag", "Sandbag clean|Sandbag over shoulder|Sandbag carry|Sandbag squat|Sandbag lunges"],
+  ["Anneaux / TRX", "Ring row|Ring dips|Ring muscle up|TRX row|TRX push up|TRX squat|TRX pistol squat"],
+  ["Disque", "Plate ground to overhead|Plate front raise|Plate push"],
+  ["Élastique", "Band pull apart|Band face pull|Band squat|Band lateral walk"],
+  ["Machine", "Leg press|Lat pulldown|Seated cable row|Cable woodchopper|Chest press machine|Leg extension|Leg curl"],
+  ["Divers", "Tire flip|Farmer carry|Bear hug carry|Wall walk|Ab wheel rollout"]
+];
+var CUSTOM_KEY = 'emom-custom-exercises-v1';
+var custom = loadCustom();
+var CATALOG = [];
+EXERCISES.forEach(function(c){ c[1].split('|').forEach(function(n){ CATALOG.push({n:n, c:c[0]}); }); });
+
+function norm(t){
+  return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()
+    .replace(/[-_]/g,' ').replace(/\s+/g,' ').trim();
+}
+function loadCustom(){
+  try{ var c = JSON.parse(localStorage.getItem(CUSTOM_KEY)); if(Array.isArray(c)) return c.filter(function(x){ return typeof x === 'string'; }); }catch(e){}
+  return [];
+}
+function saveCustom(){ try{ localStorage.setItem(CUSTOM_KEY, JSON.stringify(custom)); }catch(e){} }
+function isKnown(name){
+  var k = norm(name);
+  return CATALOG.some(function(e){ return norm(e.n) === k; }) || custom.some(function(n){ return norm(n) === k; });
+}
+/* retient un nom tapé à la main s'il n'est ni dans la liste ni déjà retenu */
+function remember(name){
+  name = String(name||'').trim();
+  if(name.length < 2 || isKnown(name)) return;
+  custom.push(name); saveCustom();
+}
+function forget(name){ custom = custom.filter(function(n){ return n !== name; }); saveCustom(); }
+
+/* suggestions : début du nom, puis début d'un mot, puis n'importe où ; les tiens d'abord */
+function suggestions(q){
+  q = norm(q);
+  var pool = custom.map(function(n){ return {n:n, mine:true}; }).concat(CATALOG);
+  if(!q) return pool.filter(function(e){ return e.mine; }).sort(function(a,b){ return a.n.localeCompare(b.n); }).slice(0, 8);
+  var words = q.split(' ');
+  var out = [];
+  pool.forEach(function(e){
+    var t = norm(e.n), sc;
+    if(t.indexOf(q) === 0) sc = 0;
+    else if((' ' + t).indexOf(' ' + q) >= 0) sc = 1;
+    else if(t.indexOf(q) >= 0) sc = 2;
+    else if(words.every(function(w){ return t.indexOf(w) >= 0; })) sc = 3;
+    else if(t.replace(/ /g,'').indexOf(q.replace(/ /g,'')) >= 0) sc = 4;
+    else return;
+    out.push({e:e, sc:sc});
+  });
+  out.sort(function(a,b){
+    return a.sc - b.sc || (b.e.mine?1:0) - (a.e.mine?1:0) || a.e.n.length - b.e.n.length || a.e.n.localeCompare(b.e.n);
+  });
+  return out.slice(0, 8).map(function(x){ return x.e; });
+}
+
+var sugg = null;
+function hideSugg(){ if(sugg){ sugg.remove(); sugg = null; } }
+function showSugg(row, input, pickFn){
+  var list = suggestions(input.value);
+  if(!list.length || (list.length === 1 && norm(list[0].n) === norm(input.value))){ hideSugg(); return; }
+  if(!sugg || sugg.previousSibling !== row){
+    hideSugg();
+    sugg = document.createElement('div'); sugg.className = 'sugg'; sugg.setAttribute('role','listbox');
+    /* garde le focus dans le champ quand on touche la liste */
+    sugg.addEventListener('pointerdown', function(e){ e.preventDefault(); });
+    sugg.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    row.after(sugg);
+  }
+  sugg.textContent = '';
+  list.forEach(function(e){
+    var line = document.createElement('div'); line.className = 'sg';
+    var pick = document.createElement('button'); pick.type = 'button'; pick.className = 'pick'; pick.setAttribute('role','option');
+    var label = document.createElement('span'); label.textContent = e.n;
+    var tag = document.createElement('small'); tag.textContent = e.mine ? 'Perso' : e.c; if(e.mine) tag.className = 'mine';
+    pick.append(label, tag);
+    pick.addEventListener('click', function(){ pickFn(e.n); });
+    line.appendChild(pick);
+    if(e.mine){
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'rm'; rm.textContent = '×';
+      rm.setAttribute('aria-label', 'Oublier ' + e.n);
+      rm.addEventListener('click', function(){ forget(e.n); showSugg(row, input, pickFn); });
+      line.appendChild(rm);
+    }
+    sugg.appendChild(line);
+  });
+}
+
 /* ---------- Écran de réglages ---------- */
 function repsValue(v){ v = parseInt(v,10); return (isFinite(v) && v>0) ? v : null; }
 
 function renderList(host, list, color, onChange){
+  if(sugg && host.contains(sugg)) sugg = null;
   host.textContent = '';
   list.forEach(function(it, i){
     var row = document.createElement('div');
@@ -335,7 +445,12 @@ function renderList(host, list, color, onChange){
     var bar = document.createElement('div'); bar.className = 'bar';
     var name = document.createElement('input'); name.type='text'; name.value = it.n; name.placeholder='Exercice';
     name.setAttribute('aria-label','Nom de l\'exercice '+(i+1));
-    name.addEventListener('input', function(){ it.n = name.value; onChange(false); });
+    name.setAttribute('autocomplete','off'); name.setAttribute('autocorrect','off'); name.spellcheck = false;
+    var pickName = function(n){ name.value = n; it.n = n; onChange(false); hideSugg(); name.blur(); };
+    name.addEventListener('input', function(){ it.n = name.value; onChange(false); showSugg(row, name, pickName); });
+    name.addEventListener('focus', function(){ showSugg(row, name, pickName); });
+    name.addEventListener('blur', function(){ remember(name.value); setTimeout(function(){ if(document.activeElement !== name) hideSugg(); }, 150); });
+    name.addEventListener('keydown', function(e){ if(e.key === 'Escape' || e.key === 'Enter'){ hideSugg(); name.blur(); } });
     var unit = isTime(it) ? (it.u === 'min' ? 'min' : 's') : 'rep';
     var reps = document.createElement('input'); reps.type='number'; reps.min='1'; reps.className='reps';
     reps.inputMode='numeric';
@@ -769,6 +884,7 @@ $('stop').onclick = function(){
   } else { stopRun(); }
 };
 
+[cfg.warm.items, cfg.emom, cfg.amrap.items, cfg.fin.items].forEach(function(l){ l.forEach(function(it){ remember(it.n); }); });
 renderSetup();
 })();
 </script>

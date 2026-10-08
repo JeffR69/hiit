@@ -58,7 +58,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .ex .unit{height:42px;border:1px solid var(--line);border-radius:8px;background:transparent;font-weight:600;font-size:14px;padding:0}
 .ex .unit.t{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .ex .del{width:28px !important}
-.test{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px;font-size:14px;margin-left:auto}
 .ex .del{height:36px;width:36px;border:0;background:transparent;color:var(--mute);font-size:22px;border-radius:8px}
 .hint{color:var(--mute);font-size:13px;margin:8px 0 0}
 .add{margin-top:12px;border:1px dashed var(--line);background:transparent;border-radius:10px;height:42px;width:100%;color:var(--mute)}
@@ -102,7 +101,8 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .ctrl{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;margin-top:14px}
 .ctrl button{height:64px;border-radius:14px;border:1px solid var(--line);background:var(--board);font-weight:600;font-size:17px}
 .ctrl .pause{background:var(--ink);color:var(--bg);border-color:var(--ink);font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:1px}
-.stop{align-self:center}
+.stop{display:block;width:100%;height:56px;margin-top:10px;border:2px solid var(--red);border-radius:14px;background:transparent;color:var(--red);font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:.5px}
+.stop.armed{background:var(--red);color:var(--on-color)}
 .flash{animation:flash .6s ease-out}
 #run.am .clock{font-size:clamp(72px,24vw,140px);margin-top:10px}
 .circuit{list-style:none;margin:0;padding:0}
@@ -207,9 +207,8 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   <section class="board">
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
-    <div class="opt"><label class="opt" style="margin:0"><input type="checkbox" id="vib"> Vibrations / retour haptique</label>
-      <button type="button" class="test" id="vibTest">Tester</button></div>
-    <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips. Sur iPhone, les vibrations passent par le retour haptique du système (iOS 18 ou plus récent, « Retour haptique système » activé).</p>
+    <label class="opt hidden" id="vibOpt"><input type="checkbox" id="vib"> Vibrations</label>
+    <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
   <button type="button" class="go" id="start">DÉMARRER</button>
@@ -251,7 +250,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <button type="button" class="pause" id="pause">PAUSE</button>
     <button type="button" id="skip" aria-label="Passer à l'étape suivante">Passer ▶</button>
   </div>
-  <button type="button" class="link stop" id="stop">Arrêter la séance</button>
+  <button type="button" class="stop" id="stop">■ ARRÊTER LA SÉANCE</button>
 </main>
 
 <!-- ===== Fin ===== -->
@@ -266,7 +265,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-07.1';
+var VERSION = '2026-10-08.2';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -422,6 +421,7 @@ $('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSe
 $('voice').onchange = function(){ cfg.voice = this.checked; save(); };
 $('en').onchange = function(){ cfg.en = this.checked; save(); };
 $('vib').onchange = function(){ cfg.vib = this.checked; save(); };
+$('vibOpt').classList.toggle('hidden', !('vibrate' in navigator));
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
 
 /* ---------- Son, voix, vibration ---------- */
@@ -453,27 +453,8 @@ function tone(freq, dur, vol, when){
 function shortBeep(){ tone(880, 0.12, 0.25); }
 function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
-/* iOS ne gère pas navigator.vibrate. Depuis iOS 18, basculer un
-   <input type="checkbox" switch> déclenche le retour haptique du système. */
-var haptic = null;
-function hapticTap(){
-  try{
-    if(!haptic){
-      haptic = document.createElement('label');
-      haptic.setAttribute('aria-hidden','true');
-      haptic.style.cssText = 'position:fixed;left:-200px;top:0;width:1px;height:1px;overflow:hidden';
-      var sw = document.createElement('input'); sw.type = 'checkbox'; sw.setAttribute('switch',''); sw.tabIndex = -1;
-      haptic.appendChild(sw); document.body.appendChild(haptic);
-    }
-    haptic.click();
-  }catch(e){}
-}
-function buzz(p){
-  if(!cfg.vib) return;
-  if(navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} return; }
-  var n = Array.isArray(p) ? Math.ceil(p.length/2) : 1;
-  for(var k=0;k<n;k++) setTimeout(hapticTap, k*200);
-}
+/* Vibrations : seulement là où le navigateur les gère (Android) ; pas sur iPhone. */
+function buzz(p){ if(cfg.vib && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
 function pickVoice(prefix){
   try{
     var vs = speechSynthesis.getVoices();
@@ -600,7 +581,7 @@ function startRun(){
   run = { el:0, last:Date.now(), paused:false, seg:-1, lastSec:null, finished:false, confirmStop:false, amRounds:0 };
   $('amCount').textContent = '0';
   $('pause').textContent = 'PAUSE';
-  $('stop').textContent = 'Arrêter la séance';
+  $('stop').textContent = '■ ARRÊTER LA SÉANCE'; $('stop').classList.remove('armed');
   show('run');
   tick();
   clearInterval(timer);
@@ -717,16 +698,6 @@ function stopRun(){
   show('setup');
 }
 
-/* Diagnostic : une impulsion tout de suite (geste de l'utilisateur),
-   une autre 2 s plus tard (comme pendant la séance, sans geste). */
-$('vibTest').onclick = function(){
-  var pulse = function(){
-    if(navigator.vibrate){ try{ navigator.vibrate(200); }catch(e){} } else hapticTap();
-  };
-  pulse();
-  var b = this; b.textContent = '… 2 s';
-  setTimeout(function(){ pulse(); b.textContent = 'Tester'; }, 2000);
-};
 $('amAddRound').onclick = function(){
   if(!run || run.finished) return;
   run.amRounds++; $('amCount').textContent = run.amRounds;
@@ -782,8 +753,8 @@ $('prev').onclick = function(){
 };
 $('stop').onclick = function(){
   if(!run.confirmStop){
-    run.confirmStop = true; $('stop').textContent = 'Appuie encore pour confirmer l\'arrêt';
-    setTimeout(function(){ if(run){ run.confirmStop = false; $('stop').textContent = 'Arrêter la séance'; } }, 3000);
+    run.confirmStop = true; $('stop').textContent = 'CONFIRMER L\'ARRÊT ?'; $('stop').classList.add('armed');
+    setTimeout(function(){ if(run){ run.confirmStop = false; $('stop').textContent = '■ ARRÊTER LA SÉANCE'; $('stop').classList.remove('armed'); } }, 3000);
   } else { stopRun(); }
 };
 

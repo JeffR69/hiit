@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Icône du compteur EMOM / AMRAP : un chrono dont le temps « se vide » -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E5403F"/>
+      <stop offset="1" stop-color="#B52323"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <!-- bouton et tige du chrono -->
+  <rect x="432" y="128" width="160" height="72" rx="24" fill="#FFFFFF"/>
+  <rect x="484" y="190" width="56" height="90" fill="#FFFFFF"/>
+  <rect x="708" y="306" width="104" height="60" rx="20" fill="#FFFFFF" transform="rotate(45 760 336)"/>
+  <!-- boîtier -->
+  <circle cx="512" cy="590" r="318" fill="#FFFFFF"/>
+  <circle cx="512" cy="590" r="270" fill="#18202E"/>
+  <!-- temps restant : secteur de 12 h à 4 h -->
+  <path d="M512 590 L512 360 A230 230 0 0 1 711.2 705 Z" fill="#FF5C57"/>
+  <!-- repères -->
+  <g fill="#FFFFFF">
+    <rect x="752" y="578" width="44" height="24" rx="8"/>
+    <rect x="500" y="798" width="24" height="44" rx="8"/>
+    <rect x="228" y="578" width="44" height="24" rx="8"/>
+  </g>
+  <!-- aiguille -->
+  <line x1="512" y1="590" x2="711.2" y2="705" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="512" cy="590" r="40" fill="#FFFFFF"/>
+</svg>

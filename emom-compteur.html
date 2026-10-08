@@ -102,7 +102,8 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .ctrl{display:grid;grid-template-columns:1fr 2fr 1fr;gap:10px;margin-top:14px}
 .ctrl button{height:64px;border-radius:14px;border:1px solid var(--line);background:var(--board);font-weight:600;font-size:17px}
 .ctrl .pause{background:var(--ink);color:var(--bg);border-color:var(--ink);font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:1px}
-.stop{align-self:center}
+.stop{display:block;width:100%;height:56px;margin-top:10px;border:2px solid var(--red);border-radius:14px;background:transparent;color:var(--red);font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:.5px}
+.stop.armed{background:var(--red);color:var(--on-color)}
 .flash{animation:flash .6s ease-out}
 #run.am .clock{font-size:clamp(72px,24vw,140px);margin-top:10px}
 .circuit{list-style:none;margin:0;padding:0}
@@ -251,7 +252,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <button type="button" class="pause" id="pause">PAUSE</button>
     <button type="button" id="skip" aria-label="Passer à l'étape suivante">Passer ▶</button>
   </div>
-  <button type="button" class="link stop" id="stop">Arrêter la séance</button>
+  <button type="button" class="stop" id="stop">■ ARRÊTER LA SÉANCE</button>
 </main>
 
 <!-- ===== Fin ===== -->
@@ -266,7 +267,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-07.1';
+var VERSION = '2026-10-08.1';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -600,7 +601,7 @@ function startRun(){
   run = { el:0, last:Date.now(), paused:false, seg:-1, lastSec:null, finished:false, confirmStop:false, amRounds:0 };
   $('amCount').textContent = '0';
   $('pause').textContent = 'PAUSE';
-  $('stop').textContent = 'Arrêter la séance';
+  $('stop').textContent = '■ ARRÊTER LA SÉANCE'; $('stop').classList.remove('armed');
   show('run');
   tick();
   clearInterval(timer);
@@ -782,8 +783,8 @@ $('prev').onclick = function(){
 };
 $('stop').onclick = function(){
   if(!run.confirmStop){
-    run.confirmStop = true; $('stop').textContent = 'Appuie encore pour confirmer l\'arrêt';
-    setTimeout(function(){ if(run){ run.confirmStop = false; $('stop').textContent = 'Arrêter la séance'; } }, 3000);
+    run.confirmStop = true; $('stop').textContent = 'CONFIRMER L\'ARRÊT ?'; $('stop').classList.add('armed');
+    setTimeout(function(){ if(run){ run.confirmStop = false; $('stop').textContent = '■ ARRÊTER LA SÉANCE'; $('stop').classList.remove('armed'); } }, 3000);
   } else { stopRun(); }
 };
 

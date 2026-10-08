@@ -140,14 +140,20 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   <section class="board green" aria-labelledby="hWarm">
     <div class="row between">
       <h2 id="hWarm">Échauffement</h2>
-      <div class="stepper" role="group" aria-label="Durée de l'échauffement">
-        <button type="button" id="warmMinus" aria-label="Moins une minute">−</button>
-        <span id="warmVal"></span>
-        <button type="button" id="warmPlus" aria-label="Plus une minute">+</button>
-      </div>
+      <label class="opt" style="margin:0"><input type="checkbox" id="warmOn"> Activé</label>
     </div>
-    <div id="warmList"></div>
-    <button type="button" class="add" id="warmAdd">Ajouter un exercice</button>
+    <div id="warmBody">
+      <div class="row between" style="margin-top:12px">
+        <span>Durée</span>
+        <div class="stepper" role="group" aria-label="Durée de l'échauffement">
+          <button type="button" id="warmMinus" aria-label="Moins une minute">−</button>
+          <span id="warmVal"></span>
+          <button type="button" id="warmPlus" aria-label="Plus une minute">+</button>
+        </div>
+      </div>
+      <div id="warmList"></div>
+      <button type="button" class="add" id="warmAdd">Ajouter un exercice</button>
+    </div>
   </section>
 
   <section class="board red" id="emomBoard" role="tabpanel" aria-labelledby="hEmom">
@@ -265,12 +271,12 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-08.2';
+var VERSION = '2026-10-08.3';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
 var DEFAULT = {
-  warm: { minutes: 2, items: [
+  warm: { on: true, minutes: 2, items: [
     {n:'Squat', r:10}, {n:'Down up', r:10}, {n:'Plank jack', r:10}
   ]},
   mode: 'emom',
@@ -302,6 +308,7 @@ function load(){
         if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
         if(!c.amrap || !Array.isArray(c.amrap.items) || !c.amrap.items.length || !(c.amrap.minutes>0)) c.amrap = clone(DEFAULT.amrap);
         if(c.mode !== 'amrap') c.mode = 'emom';
+        if(c.warm.on === undefined) c.warm.on = true;
         /* anciennes séances : répétitions vides = exercice sur toute la durée */
         var toTime = function(list, sec){ list.forEach(function(it){
           if(!it.k && it.r == null){ it.k = 'time'; it.t = sec; it.u = sec % 60 ? 's' : 'min'; }
@@ -367,7 +374,8 @@ function sumSec(list, repSec){ return list.reduce(function(a, it){ return a + ex
 function roundSec(){ return sumSec(cfg.emom, 60); }
 function finSec(){ return cfg.fin.on ? sumSec(cfg.fin.items, cfg.fin.minutes*60) : 0; }
 function mainSec(){ return isAmrap() ? cfg.amrap.minutes*60 : cfg.rounds * roundSec(); }
-function totalSec(){ return cfg.warm.minutes*60 + mainSec() + finSec(); }
+function warmSec(){ return cfg.warm.on ? cfg.warm.minutes*60 : 0; }
+function totalSec(){ return warmSec() + mainSec() + finSec(); }
 function durShort(sec){
   var m = Math.floor(sec/60), r = sec % 60;
   return !m ? r + ' s' : !r ? m + ' min' : m + ' min ' + (r<10?'0':'') + r;
@@ -378,6 +386,8 @@ function durSpoken(sec){
 }
 
 function renderSetup(){
+  $('warmOn').checked = !!cfg.warm.on;
+  $('warmBody').classList.toggle('hidden', !cfg.warm.on);
   $('warmVal').textContent = cfg.warm.minutes + ' min';
   $('rVal').textContent = cfg.rounds;
   $('voice').checked = !!cfg.voice;
@@ -398,8 +408,8 @@ function renderSetup(){
   updSummary();
 }
 function updSummary(){
-  $('summary').textContent = 'Durée totale : ' + durShort(totalSec()) + ' (' + cfg.warm.minutes +
-    ' min d\'échauffement + ' + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + durShort(roundSec())) +
+  $('summary').textContent = 'Durée totale : ' + durShort(totalSec()) + ' (' +
+    (cfg.warm.on ? cfg.warm.minutes + ' min d\'échauffement + ' : '') + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + durShort(roundSec())) +
     (cfg.fin.on ? ' + ' + durShort(finSec()) + ' de finisher' : '') + ')';
 }
 
@@ -407,6 +417,7 @@ $('warmMinus').onclick = function(){ if(cfg.warm.minutes>1){ cfg.warm.minutes--;
 $('warmPlus').onclick  = function(){ if(cfg.warm.minutes<15){ cfg.warm.minutes++; save(); renderSetup(); } };
 $('rMinus').onclick = function(){ if(cfg.rounds>1){ cfg.rounds--; save(); renderSetup(); } };
 $('rPlus').onclick  = function(){ if(cfg.rounds<20){ cfg.rounds++; save(); renderSetup(); } };
+$('warmOn').onchange = function(){ cfg.warm.on = this.checked; save(); renderSetup(); };
 $('warmAdd').onclick = function(){ cfg.warm.items.push({n:'', r:10}); save(); renderSetup(); };
 $('tabEmom').onclick = function(){ cfg.mode = 'emom'; save(); renderSetup(); };
 $('tabAmrap').onclick = function(){ cfg.mode = 'amrap'; save(); renderSetup(); };
@@ -522,7 +533,7 @@ function listSpeech(items){
 function segColor(s){ return s.kind==='warm' ? 'green' : s.kind==='fin' ? 'violet' : s.kind==='amrap' ? 'red' : COLORS[s.idx % COLORS.length]; }
 
 function build(){
-  segs = [{kind:'warm', dur: cfg.warm.minutes*60}];
+  segs = cfg.warm.on ? [{kind:'warm', dur: cfg.warm.minutes*60}] : [];
   if(isAmrap()){
     segs.push({kind:'amrap', dur: cfg.amrap.minutes*60});
   } else {

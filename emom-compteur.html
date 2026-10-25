@@ -764,24 +764,38 @@ function pickVoices(){
 }
 /* iOS charge la liste des voix en différé : on la demande dès le départ */
 try{ if('speechSynthesis' in window) speechSynthesis.getVoices(); }catch(e){}
-/* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'} */
+/* numéro de l'annonce en cours : une nouvelle annonce ou stopSpeech() interrompt la précédente */
+var sayId = 0;
+function stopSpeech(){ sayId++; try{ speechSynthesis.cancel(); }catch(e){} }
+/* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'}.
+   Les morceaux sont lus l'un après l'autre : si on les met tous en file d'un coup,
+   Safari iOS lit toute la file avec la voix du premier (noms anglais lus en français). */
 function say(parts, delay){
   if(!cfg.voice || !('speechSynthesis' in window)) return;
   if(typeof parts === 'string') parts = [{t:parts, l:'fr'}];
-  parts = parts.filter(function(p){ return p && p.t; });
-  setTimeout(function(){
+  /* regroupe les morceaux consécutifs de la même langue */
+  var chunks = [];
+  parts.forEach(function(p){
+    if(!p || !p.t) return;
+    var last = chunks[chunks.length-1];
+    if(last && last.l === p.l) last.t += ' ' + p.t; else chunks.push({t:p.t, l:p.l});
+  });
+  stopSpeech();
+  var id = sayId, i = 0;
+  var next = function(){
+    if(id !== sayId || i >= chunks.length) return;
+    var p = chunks[i++];
     try{
-      speechSynthesis.cancel();
-      parts.forEach(function(p){
-        var u = new SpeechSynthesisUtterance(p.t);
-        u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
-        u.rate = (p.l === 'en') ? 1.0 : 1.05;
-        var v = pickVoices()[p.l === 'en' ? 'en' : 'fr'];
-        if(v){ u.voice = v; u.lang = v.lang; }
-        speechSynthesis.speak(u);
-      });
-    }catch(e){}
-  }, delay||0);
+      var u = new SpeechSynthesisUtterance(p.t);
+      u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
+      u.rate = (p.l === 'en') ? 1.0 : 1.05;
+      var v = pickVoices()[p.l === 'en' ? 'en' : 'fr'];
+      if(v){ u.voice = v; u.lang = v.lang; }
+      u.onend = u.onerror = next;
+      speechSynthesis.speak(u);
+    }catch(e){ next(); }
+  };
+  setTimeout(next, delay||0);
 }
 function exPart(name){ return {t: name || 'Exercice', l: 'en'}; }
 
@@ -994,7 +1008,7 @@ function stopRun(){
   clearInterval(timer);
   if(run) run.finished = true;
   releaseWake();
-  try{ speechSynthesis.cancel(); }catch(e){}
+  stopSpeech();
   show('setup');
 }
 
@@ -1036,7 +1050,7 @@ $('pause').onclick = function(){
   run.paused = !run.paused;
   run.last = Date.now();
   $('pause').textContent = run.paused ? 'REPRENDRE' : 'PAUSE';
-  if(run.paused){ try{ speechSynthesis.cancel(); }catch(e){} }
+  if(run.paused) stopSpeech();
   else { unlockAudio(); }
 };
 $('skip').onclick = function(){

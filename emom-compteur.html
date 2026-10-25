@@ -302,7 +302,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.6';
+var VERSION = '2026-10-25.7';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -725,13 +725,34 @@ function tone(freq, dur, vol, when){
 function shortBeep(){ tone(880, 0.12, 0.25); }
 function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
+/* Voix fantaisie d'iOS / macOS (robot, chuchotement, chantées…) : jamais choisies.
+   Sans ce filtre, la première voix anglaise de la liste est souvent « Albert ». */
+var ODD_VOICES = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley/i;
+var GOOD_VOICES = {
+  en: /samantha|ava|allison|susan|karen|daniel|moira|tessa|serena|google us english|aria|jenny/i,
+  fr: /am[ée]lie|thomas|audrey|aur[ée]lie|marie|google fran[çc]ais|denise|julie/i
+};
+var MAIN_LANG = {en:'en-us', fr:'fr-fr'};
+var voiceCache = {};
+/* meilleure voix pour la langue : naturelle, de préférence américaine (en) ou de France (fr) */
 function pickVoice(prefix){
   try{
     var vs = speechSynthesis.getVoices();
-    for(var i=0;i<vs.length;i++){
-      var l = (vs[i].lang || '').toLowerCase().replace('_','-');
-      if(l.indexOf(prefix)===0) return vs[i];
-    }
+    var c = voiceCache[prefix];
+    if(c && c.n === vs.length) return c.v;
+    var best = null, bestSc = -1;
+    vs.forEach(function(v){
+      var l = (v.lang || '').toLowerCase().replace('_','-');
+      if(l.indexOf(prefix) !== 0 || ODD_VOICES.test(v.name)) return;
+      var sc = 0;
+      if(GOOD_VOICES[prefix] && GOOD_VOICES[prefix].test(v.name)) sc += 4;
+      if(/enhanced|premium|am[ée]lior[ée]e|natural/i.test(v.name)) sc += 2;
+      if(l === MAIN_LANG[prefix]) sc += 2;
+      if(v.localService) sc += 1;
+      if(sc > bestSc){ best = v; bestSc = sc; }
+    });
+    voiceCache[prefix] = {n: vs.length, v: best};
+    return best;
   }catch(e){}
   return null;
 }

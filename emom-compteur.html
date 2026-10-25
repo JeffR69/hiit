@@ -243,7 +243,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 
   <section class="board">
     <label class="opt sw-row"><span>Annonces vocales (exercice + répétitions)</span><input type="checkbox" class="sw" role="switch" id="voice"></label>
-    <label class="opt sw-row"><span>Prononcer les noms d'exercices en anglais</span><input type="checkbox" class="sw" role="switch" id="en"></label>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -302,7 +301,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.6';
+var VERSION = '2026-10-25.7';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -322,8 +321,7 @@ var DEFAULT = {
   fin: { on: true, minutes: 1, items: [
     {n:'Push up', k:'time', t:60, u:'min'}, {n:'Plank', k:'time', t:60, u:'min'}
   ]},
-  voice: true,
-  en: true
+  voice: true
 };
 /* ---------- Gestion du thème clair/sombre ---------- */
 function loadTheme(){
@@ -651,7 +649,6 @@ function renderSetup(){
   $('warmVal').textContent = cfg.warm.minutes + ' min';
   $('rVal').textContent = cfg.rounds;
   $('voice').checked = !!cfg.voice;
-  $('en').checked = cfg.en !== false;
   $('tabEmom').setAttribute('aria-selected', String(!isAmrap()));
   $('tabAmrap').setAttribute('aria-selected', String(isAmrap()));
   $('emomBoard').classList.toggle('hidden', isAmrap());
@@ -687,7 +684,6 @@ $('finAdd').onclick = function(){ cfg.fin.items.push({n:'', r:null}); save(); re
 $('finOn').onchange = function(){ cfg.fin.on = this.checked; save(); renderSetup(); };
 $('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSetup(); };
 $('voice').onchange = function(){ cfg.voice = this.checked; save(); };
-$('en').onchange = function(){ cfg.en = this.checked; save(); };
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
 $('themeToggle').onclick = function(){
     var isDark = this.getAttribute('aria-checked') === 'true';
@@ -725,36 +721,83 @@ function tone(freq, dur, vol, when){
 function shortBeep(){ tone(880, 0.12, 0.25); }
 function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
-function pickVoice(prefix){
+/* Voix fantaisie ou robotiques d'iOS / macOS : jamais choisies.
+   Sans ce filtre, la première voix anglaise de la liste est souvent « Albert ». */
+var ODD_VOICES = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley/i;
+/* Voix naturelles par genre : on prend le même genre en anglais (noms d'exercices)
+   et en français (répétitions) pour que les deux voix se ressemblent. */
+var NATURAL_VOICES = [
+  {en: /samantha|ava|allison|susan|karen|moira|tessa|serena|zoe|aria|jenny|google us english/i,
+   fr: /audrey|am[ée]lie|aur[ée]lie|marie|denise|julie|google fran[çc]ais/i},
+  {en: /daniel|alex|tom|evan|nathan|aaron|guy/i,
+   fr: /thomas|nicolas|henri/i}
+];
+var MAIN_LANG = {en:'en-us', fr:'fr-fr'};
+var voices = null, voicesN = -1;
+function voiceLang(v){ return (v.lang || '').toLowerCase().replace('_','-'); }
+/* meilleure voix de la langue lg parmi celles dont le nom correspond à re (re absent : toutes) */
+function bestVoice(vs, lg, re){
+  var best = null, bestSc = -1;
+  vs.forEach(function(v){
+    if(voiceLang(v).indexOf(lg) !== 0 || ODD_VOICES.test(v.name) || (re && !re.test(v.name))) return;
+    var sc = 0;
+    if(/enhanced|premium|am[ée]lior[ée]e|natural/i.test(v.name)) sc += 2;
+    if(voiceLang(v) === MAIN_LANG[lg]) sc += 2;
+    if(v.localService) sc += 1;
+    if(sc > bestSc){ best = v; bestSc = sc; }
+  });
+  return best;
+}
+/* {en, fr} : deux voix naturelles du même genre, sinon la meilleure voix de chaque langue */
+function pickVoices(){
   try{
     var vs = speechSynthesis.getVoices();
-    for(var i=0;i<vs.length;i++){
-      var l = (vs[i].lang || '').toLowerCase().replace('_','-');
-      if(l.indexOf(prefix)===0) return vs[i];
+    if(voices && voicesN === vs.length) return voices;
+    voicesN = vs.length;
+    for(var i=0;i<NATURAL_VOICES.length;i++){
+      var en = bestVoice(vs, 'en', NATURAL_VOICES[i].en), fr = bestVoice(vs, 'fr', NATURAL_VOICES[i].fr);
+      if(en && fr) return (voices = {en: en, fr: fr});
     }
+    return (voices = {en: bestVoice(vs, 'en'), fr: bestVoice(vs, 'fr')});
   }catch(e){}
-  return null;
+  return {en:null, fr:null};
 }
-/* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'} */
+/* iOS charge la liste des voix en différé : on la demande dès le départ */
+try{ if('speechSynthesis' in window) speechSynthesis.getVoices(); }catch(e){}
+/* numéro de l'annonce en cours : une nouvelle annonce ou stopSpeech() interrompt la précédente */
+var sayId = 0;
+function stopSpeech(){ sayId++; try{ speechSynthesis.cancel(); }catch(e){} }
+/* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'}.
+   Les morceaux sont lus l'un après l'autre : si on les met tous en file d'un coup,
+   Safari iOS lit toute la file avec la voix du premier (noms anglais lus en français). */
 function say(parts, delay){
   if(!cfg.voice || !('speechSynthesis' in window)) return;
   if(typeof parts === 'string') parts = [{t:parts, l:'fr'}];
-  parts = parts.filter(function(p){ return p && p.t; });
-  setTimeout(function(){
+  /* regroupe les morceaux consécutifs de la même langue */
+  var chunks = [];
+  parts.forEach(function(p){
+    if(!p || !p.t) return;
+    var last = chunks[chunks.length-1];
+    if(last && last.l === p.l) last.t += ' ' + p.t; else chunks.push({t:p.t, l:p.l});
+  });
+  stopSpeech();
+  var id = sayId, i = 0;
+  var next = function(){
+    if(id !== sayId || i >= chunks.length) return;
+    var p = chunks[i++];
     try{
-      speechSynthesis.cancel();
-      parts.forEach(function(p){
-        var u = new SpeechSynthesisUtterance(p.t);
-        u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
-        u.rate = (p.l === 'en') ? 1.0 : 1.05;
-        var v = pickVoice(p.l === 'en' ? 'en' : 'fr');
-        if(v) u.voice = v;
-        speechSynthesis.speak(u);
-      });
-    }catch(e){}
-  }, delay||0);
+      var u = new SpeechSynthesisUtterance(p.t);
+      u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
+      u.rate = (p.l === 'en') ? 1.0 : 1.05;
+      var v = pickVoices()[p.l === 'en' ? 'en' : 'fr'];
+      if(v){ u.voice = v; u.lang = v.lang; }
+      u.onend = u.onerror = next;
+      speechSynthesis.speak(u);
+    }catch(e){ next(); }
+  };
+  setTimeout(next, delay||0);
 }
-function exPart(name){ return {t: name || 'Exercice', l: (cfg.en === false) ? 'fr' : 'en'}; }
+function exPart(name){ return {t: name || 'Exercice', l: 'en'}; }
 
 /* ---------- Écran toujours allumé ---------- */
 var wakeLock = null;
@@ -965,7 +1008,7 @@ function stopRun(){
   clearInterval(timer);
   if(run) run.finished = true;
   releaseWake();
-  try{ speechSynthesis.cancel(); }catch(e){}
+  stopSpeech();
   show('setup');
 }
 
@@ -1007,7 +1050,7 @@ $('pause').onclick = function(){
   run.paused = !run.paused;
   run.last = Date.now();
   $('pause').textContent = run.paused ? 'REPRENDRE' : 'PAUSE';
-  if(run.paused){ try{ speechSynthesis.cancel(); }catch(e){} }
+  if(run.paused) stopSpeech();
   else { unlockAudio(); }
 };
 $('skip').onclick = function(){

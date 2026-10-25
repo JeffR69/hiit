@@ -233,7 +233,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   <section class="board">
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
-    <label class="opt hidden" id="vibOpt"><input type="checkbox" id="vib"> Vibrations</label>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -291,7 +290,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.2';
+var VERSION = '2026-10-25.3';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -312,8 +311,7 @@ var DEFAULT = {
     {n:'Push up', k:'time', t:60, u:'min'}, {n:'Plank', k:'time', t:60, u:'min'}
   ]},
   voice: true,
-  en: true,
-  vib: true
+  en: true
 };
 /* ---------- Gestion du thème clair/sombre ---------- */
 function loadTheme(){
@@ -551,7 +549,6 @@ function renderSetup(){
   $('rVal').textContent = cfg.rounds;
   $('voice').checked = !!cfg.voice;
   $('en').checked = cfg.en !== false;
-  $('vib').checked = !!cfg.vib;
   $('tabEmom').setAttribute('aria-selected', String(!isAmrap()));
   $('tabAmrap').setAttribute('aria-selected', String(isAmrap()));
   $('emomBoard').classList.toggle('hidden', isAmrap());
@@ -590,8 +587,6 @@ $('finOn').onchange = function(){ cfg.fin.on = this.checked; save(); renderSetup
 $('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSetup(); };
 $('voice').onchange = function(){ cfg.voice = this.checked; save(); };
 $('en').onchange = function(){ cfg.en = this.checked; save(); };
-$('vib').onchange = function(){ cfg.vib = this.checked; save(); };
-$('vibOpt').classList.toggle('hidden', !('vibrate' in navigator));
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
 $('themeToggle').onclick = function(){
     var isDark = this.getAttribute('aria-checked') === 'true';
@@ -600,7 +595,7 @@ $('themeToggle').onclick = function(){
 
 loadTheme();
 
-/* ---------- Son, voix, vibration ---------- */
+/* ---------- Son, voix ---------- */
 var ac = null;
 function unlockAudio(){
   try{
@@ -629,8 +624,6 @@ function tone(freq, dur, vol, when){
 function shortBeep(){ tone(880, 0.12, 0.25); }
 function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
-/* Vibrations : seulement là où le navigateur les gère (Android) ; pas sur iPhone. */
-function buzz(p){ if(cfg.vib && navigator.vibrate){ try{ navigator.vibrate(p); }catch(e){} } }
 function pickVoice(prefix){
   try{
     var vs = speechSynthesis.getVoices();
@@ -773,7 +766,7 @@ function enter(i){
   var s = segs[i];
   $('run').className = segColor(s) + (s.kind==='amrap' ? ' am' : '');
   $('run').classList.remove('flash'); void $('run').offsetWidth; $('run').classList.add('flash');
-  longBeep(); buzz([250,100,250]);
+  longBeep();
   paintStrip(i);
 
   $('warmView').classList.toggle('hidden', s.kind !== 'warm');
@@ -846,7 +839,7 @@ function tick(){
   if(secLeft !== run.lastSec){
     run.lastSec = secLeft;
     if(!run.paused){
-      if(secLeft>=1 && secLeft<=3){ shortBeep(); buzz(60); }
+      if(secLeft>=1 && secLeft<=3) shortBeep();
       if((s.kind==='warm' || s.kind==='amrap') && secLeft===10) say('Dix secondes', 0);
       if(s.kind==='amrap' && s.dur>120 && secLeft===60) say('Plus qu\'une minute', 0);
       if(s.kind==='amrap' && s.dur>=600 && secLeft*2===s.dur) say('Mi-temps. ' + run.amRounds + (run.amRounds>1 ? ' tours' : ' tour'), 0);
@@ -857,7 +850,7 @@ function tick(){
 function finish(){
   run.finished = true; clearInterval(timer);
   releaseWake();
-  doneBeep(); buzz([300,150,300,150,600]);
+  doneBeep();
   var tours = run.amRounds + (run.amRounds>1 ? ' tours' : ' tour');
   say(isAmrap() ? 'Séance terminée. ' + tours + '. Bravo !' : 'Séance terminée. Bravo !', 800);
   $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' +
@@ -877,7 +870,7 @@ function stopRun(){
 $('amAddRound').onclick = function(){
   if(!run || run.finished) return;
   run.amRounds++; $('amCount').textContent = run.amRounds;
-  tone(1046, 0.1, 0.25); buzz(40);
+  tone(1046, 0.1, 0.25);
 };
 $('amUndo').onclick = function(){
   if(!run || run.finished || run.amRounds<=0) return;

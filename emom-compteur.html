@@ -282,7 +282,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-08.4';
+var VERSION = '2026-10-25.1';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -306,27 +306,6 @@ var DEFAULT = {
   en: true,
   vib: true
 };
-function load(){
-    try{
-        var raw = localStorage.getItem(KEY);
-        if(raw){
-            var c = JSON.parse(raw);
-            if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0){
-                if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
-                if(!c.amrap || !Array.isArray(c.amrap.items) || !c.amrap.items.length || !(c.amrap.minutes>0)) c.amrap = clone(DEFAULT.amrap);
-                if(c.mode !== 'amrap') c.mode = 'emom';
-                if(c.warm.on === undefined) c.warm.on = true;
-                /* anciennes séances : répétitions vides = exercice sur toute la durée */
-                var toTime = function(list, sec){ list.forEach(function(it){
-                    if(!it.k && it.r == null){ it.k = 'time'; it.t = sec; it.u = sec % 60 ? 's' : 'min'; }
-                }); };
-                toTime(c.emom, 60); toTime(c.fin.items, c.fin.minutes*60);
-                return c;
-            }
-        }
-    }catch(e){}
-    return clone(DEFAULT);
-}
 /* ---------- Gestion du thème clair/sombre ---------- */
 function loadTheme(){
     try{
@@ -353,14 +332,9 @@ function loadTheme(){
     }catch(e){}
 }
 function setTheme(mode){
-    if(mode === 'dark'){
-        document.documentElement.setAttribute('data-theme', 'dark');
-        $('themeToggle').classList.add('on');
-    } else {
-        document.documentElement.removeAttribute('data-theme');
-        $('themeToggle').classList.remove('on');
-    }
-    localStorage.setItem('emom-theme', mode);
+    document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
+    $('themeToggle').classList.toggle('on', mode === 'dark');
+    try{ localStorage.setItem('emom-theme', mode); }catch(e){}
 }
 
 var KEY = 'emom-config-v1';

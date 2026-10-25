@@ -79,6 +79,12 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .add{margin-top:12px;border:1px dashed var(--line);background:transparent;border-radius:10px;height:42px;width:100%;color:var(--mute)}
 .opt{display:flex;align-items:center;gap:10px;margin-top:6px}
 .opt input{width:22px;height:22px}
+.opt.sw-row{justify-content:space-between;gap:12px;min-height:44px;margin-top:0}
+.opt input.sw{-webkit-appearance:none;appearance:none;position:relative;flex:0 0 52px;width:52px;height:30px;margin:0;border:1px solid var(--line);border-radius:15px;background:var(--line);cursor:pointer;transition:background .2s ease}
+.opt input.sw::before{content:'';position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:var(--board);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .2s ease}
+.opt input.sw:checked{background:var(--green);border-color:var(--green)}
+.opt input.sw:checked::before{transform:translateX(22px)}
+@media (prefers-reduced-motion: reduce){.opt input.sw,.opt input.sw::before{transition:none}}
 .go{width:100%;height:68px;border:0;border-radius:14px;background:var(--red);color:var(--on-color);font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:1px;margin-top:6px}
 .link{border:0;background:transparent;color:var(--mute);text-decoration:underline;padding:12px 4px;font-size:14px}
 .red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)} .violet{--c:var(--violet)}
@@ -234,8 +240,8 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
   </section>
 
   <section class="board">
-    <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
-    <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
+    <label class="opt sw-row"><span>Annonces vocales (exercice + répétitions)</span><input type="checkbox" class="sw" role="switch" id="voice"></label>
+    <label class="opt sw-row"><span>Prononcer les noms d'exercices en anglais</span><input type="checkbox" class="sw" role="switch" id="en"></label>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -293,7 +299,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.4';
+var VERSION = '2026-10-25.5';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];

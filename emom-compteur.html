@@ -91,6 +91,9 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .update{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--blue);color:var(--on-color);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600}
 .update button{border:0;border-radius:8px;background:var(--on-color);color:var(--blue);padding:8px 12px;font-weight:700;white-space:nowrap}
 .ver{color:var(--mute);font-size:12px;text-align:center;margin:4px 0 0}
+.total{text-align:center;margin:0 0 16px}
+.total span{display:block;color:var(--mute);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.total b{display:block;font-family:var(--text);font-weight:600;font-size:28px;line-height:1.2;margin-top:2px;color:var(--red);font-variant-numeric:tabular-nums}
 
 /* ---------- Séance ---------- */
 #run{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;padding:14px 16px 16px;max-width:620px;margin:0 auto}
@@ -149,7 +152,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <button type="button" id="updBtn">Mettre à jour</button>
   </div>
   <h1>Compteur HiiT</h1>
-  <p class="sub" id="summary"></p>
+  <p class="total"><span>Durée totale</span><b id="summary"></b></p>
 
   <div class="tabs" role="tablist" aria-label="Type de séance">
     <button type="button" role="tab" id="tabEmom" aria-controls="emomBoard">EMOM</button>
@@ -290,7 +293,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.3';
+var VERSION = '2026-10-25.4';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -564,9 +567,7 @@ function renderSetup(){
   updSummary();
 }
 function updSummary(){
-  $('summary').textContent = 'Durée totale : ' + durShort(totalSec()) + ' (' +
-    (cfg.warm.on ? cfg.warm.minutes + ' min d\'échauffement + ' : '') + (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min' : cfg.rounds + ' rounds × ' + durShort(roundSec())) +
-    (cfg.fin.on ? ' + ' + durShort(finSec()) + ' de finisher' : '') + ')';
+  $('summary').textContent = durShort(totalSec());
 }
 
 $('warmMinus').onclick = function(){ if(cfg.warm.minutes>1){ cfg.warm.minutes--; save(); renderSetup(); } };

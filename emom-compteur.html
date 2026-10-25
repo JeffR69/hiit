@@ -45,6 +45,14 @@ button{cursor:pointer}
 .board{background:var(--board);border:1px solid var(--line);border-radius:14px;padding:18px 16px;margin-bottom:14px}
 h1{font-family:var(--display);font-weight:800;font-size:44px;line-height:1;margin:6px 0 4px;letter-spacing:.5px}
 #setup h1{text-align:center;margin-bottom:16px}
+.topbar{display:flex;justify-content:flex-end;margin-bottom:4px}
+.switch{position:relative;width:60px;height:32px;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--line)}
+.switch .knob{position:absolute;top:2px;left:2px;width:26px;height:26px;border-radius:50%;background:var(--board);display:grid;place-items:center;font-size:15px;line-height:1;transition:transform .2s ease}
+.switch[aria-checked="true"]{background:var(--ink);border-color:var(--ink)}
+.switch[aria-checked="true"] .knob{transform:translateX(28px)}
+.switch .knob::before{content:'☀️'}
+.switch[aria-checked="true"] .knob::before{content:'🌙'}
+@media (prefers-reduced-motion: reduce){.switch .knob{transition:none}}
 .sub{color:var(--mute);margin:0 0 16px;font-size:15px}
 h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-height:1.1}
 .row{display:flex;align-items:center;gap:10px}
@@ -73,7 +81,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .opt input{width:22px;height:22px}
 .go{width:100%;height:68px;border:0;border-radius:14px;background:var(--red);color:var(--on-color);font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:1px;margin-top:6px}
 .link{border:0;background:transparent;color:var(--mute);text-decoration:underline;padding:12px 4px;font-size:14px}
-.link.on{color:var(--blue)}
 .red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)} .violet{--c:var(--violet)}
 .ex .bar,.chipbar{background:var(--c)}
 
@@ -134,6 +141,9 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 
 <!-- ===== Écran de réglages ===== -->
 <main id="setup" class="wrap">
+  <div class="topbar">
+    <button type="button" class="switch" id="themeToggle" role="switch" aria-checked="false" aria-label="Mode sombre" title="Mode sombre"><span class="knob" aria-hidden="true"></span></button>
+  </div>
   <div id="update" class="update hidden" role="status">
     <span>Nouvelle version disponible</span>
     <button type="button" id="updBtn">Mettre à jour</button>
@@ -224,7 +234,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
     <label class="opt hidden" id="vibOpt"><input type="checkbox" id="vib"> Vibrations</label>
-    <button type="button" class="link" id="themeToggle" title="Changer de thème">🌗 Thème</button>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -282,7 +291,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 'use strict';
 
 /* À changer à chaque publication : sert à détecter une nouvelle version. */
-var VERSION = '2026-10-25.1';
+var VERSION = '2026-10-25.2';
 
 /* ---------- Données ---------- */
 var COLORS = ['red','blue','green'];
@@ -312,28 +321,28 @@ function loadTheme(){
         var saved = localStorage.getItem('emom-theme');
         if(saved === 'dark') { 
             document.documentElement.setAttribute('data-theme', 'dark');
-            $('themeToggle').classList.add('on');
+            $('themeToggle').setAttribute('aria-checked', 'true');
             return; 
         }
         if(saved === 'light') { 
             document.documentElement.setAttribute('data-theme', 'light');
-            $('themeToggle').classList.remove('on');
+            $('themeToggle').setAttribute('aria-checked', 'false');
             return; 
         }
         /* Pas de thème sauvegardé : utiliser prefers-color-scheme */
         var isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
         if(isDark){
             document.documentElement.setAttribute('data-theme', 'dark');
-            $('themeToggle').classList.add('on');
+            $('themeToggle').setAttribute('aria-checked', 'true');
         } else {
             document.documentElement.removeAttribute('data-theme');
-            $('themeToggle').classList.remove('on');
+            $('themeToggle').setAttribute('aria-checked', 'false');
         }
     }catch(e){}
 }
 function setTheme(mode){
     document.documentElement.setAttribute('data-theme', mode === 'dark' ? 'dark' : 'light');
-    $('themeToggle').classList.toggle('on', mode === 'dark');
+    $('themeToggle').setAttribute('aria-checked', String(mode === 'dark'));
     try{ localStorage.setItem('emom-theme', mode); }catch(e){}
 }
 
@@ -584,8 +593,8 @@ $('en').onchange = function(){ cfg.en = this.checked; save(); };
 $('vib').onchange = function(){ cfg.vib = this.checked; save(); };
 $('vibOpt').classList.toggle('hidden', !('vibrate' in navigator));
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
-$('themeToggle').onclick = function(){ 
-    var isDark = this.classList.contains('on');
+$('themeToggle').onclick = function(){
+    var isDark = this.getAttribute('aria-checked') === 'true';
     setTheme(isDark ? 'light' : 'dark');
 };
 

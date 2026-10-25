@@ -72,6 +72,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 .opt input{width:22px;height:22px}
 .go{width:100%;height:68px;border:0;border-radius:14px;background:var(--red);color:var(--on-color);font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:1px;margin-top:6px}
 .link{border:0;background:transparent;color:var(--mute);text-decoration:underline;padding:12px 4px;font-size:14px}
+.link.on{color:var(--blue)}
 .red{--c:var(--red)} .blue{--c:var(--blue)} .green{--c:var(--green)} .violet{--c:var(--violet)}
 .ex .bar,.chipbar{background:var(--c)}
 
@@ -222,6 +223,7 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
     <label class="opt"><input type="checkbox" id="voice"> Annonces vocales (exercice + répétitions)</label>
     <label class="opt"><input type="checkbox" id="en"> Prononcer les noms d'exercices en anglais</label>
     <label class="opt hidden" id="vibOpt"><input type="checkbox" id="vib"> Vibrations</label>
+    <button type="button" class="link" id="themeToggle" title="Changer de thème">🌗 Thème</button>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -303,6 +305,63 @@ var DEFAULT = {
   en: true,
   vib: true
 };
+function load(){
+    try{
+        var raw = localStorage.getItem(KEY);
+        if(raw){
+            var c = JSON.parse(raw);
+            if(c && c.warm && Array.isArray(c.warm.items) && Array.isArray(c.emom) && c.emom.length && c.rounds>0){
+                if(!c.fin || !Array.isArray(c.fin.items) || !c.fin.items.length || !(c.fin.minutes>0)) c.fin = clone(DEFAULT.fin);
+                if(!c.amrap || !Array.isArray(c.amrap.items) || !c.amrap.items.length || !(c.amrap.minutes>0)) c.amrap = clone(DEFAULT.amrap);
+                if(c.mode !== 'amrap') c.mode = 'emom';
+                if(c.warm.on === undefined) c.warm.on = true;
+                /* anciennes séances : répétitions vides = exercice sur toute la durée */
+                var toTime = function(list, sec){ list.forEach(function(it){
+                    if(!it.k && it.r == null){ it.k = 'time'; it.t = sec; it.u = sec % 60 ? 's' : 'min'; }
+                }); };
+                toTime(c.emom, 60); toTime(c.fin.items, c.fin.minutes*60);
+                return c;
+            }
+        }
+    }catch(e){}
+    return clone(DEFAULT);
+}
+/* ---------- Gestion du thème clair/sombre ---------- */
+function loadTheme(){
+    try{
+        var saved = localStorage.getItem('emom-theme');
+        if(saved === 'dark') { 
+            document.documentElement.setAttribute('data-theme', 'dark');
+            $('themeToggle').classList.add('on');
+            return; 
+        }
+        if(saved === 'light') { 
+            document.documentElement.setAttribute('data-theme', 'light');
+            $('themeToggle').classList.remove('on');
+            return; 
+        }
+        /* Pas de thème sauvegardé : utiliser prefers-color-scheme */
+        var isDark = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if(isDark){
+            document.documentElement.setAttribute('data-theme', 'dark');
+            $('themeToggle').classList.add('on');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            $('themeToggle').classList.remove('on');
+        }
+    }catch(e){}
+}
+function setTheme(mode){
+    if(mode === 'dark'){
+        document.documentElement.setAttribute('data-theme', 'dark');
+        $('themeToggle').classList.add('on');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        $('themeToggle').classList.remove('on');
+    }
+    localStorage.setItem('emom-theme', mode);
+}
+
 var KEY = 'emom-config-v1';
 var cfg = load();
 
@@ -332,7 +391,8 @@ function save(){ try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){
 
 var $ = function(id){ return document.getElementById(id); };
 
-/* ---------- Liste d'exercices ---------- */
+/* Appel à loadTheme() après l'initialisation */
+
 var EXERCISES = [
   ["Poids du corps", "Squat|Air squat|Squat jump|Sumo squat|Pistol squat|Wall sit|Lunges|Walking lunges|Reverse lunges|Jumping lunges|Lateral lunges|Curtsy lunges|Bulgarian split squat|Glute bridge|Single leg glute bridge|Calf raises|Burpees|Burpee broad jump|Down up|Sprawl|Push up|Wide push up|Diamond push up|Pike push up|Hand release push up|Decline push up|Handstand push up|Bench dips|Plank|Side plank|Plank jack|Plank shoulder taps|Plank up down|Bear crawl|Bear plank|Crab walk|Inchworm|Mountain climber|Cross body mountain climber|Jumping jack|Star jump|Seal jack|Skater jumps|Tuck jumps|Broad jump|Frog jumps|High knees|Butt kicks|Fast feet|Lateral shuffle|Sit up|Crunches|Bicycle crunches|Russian twist|V ups|Tuck ups|Leg raises|Flutter kicks|Scissor kicks|Hollow hold|Hollow rocks|Superman|Dead bug|Bird dog|Toe touches|Heel taps|Shadow boxing|Sprint|Run|Shuttle run|Agility ladder"],
   ["Barre de traction", "Pull up|Chin up|Kipping pull up|Chest to bar pull up|Burpee pull up|Toes to bar|Knees to elbow|Hanging knee raises|Hanging leg raises|Dead hang|Bar muscle up"],
@@ -549,6 +609,12 @@ $('en').onchange = function(){ cfg.en = this.checked; save(); };
 $('vib').onchange = function(){ cfg.vib = this.checked; save(); };
 $('vibOpt').classList.toggle('hidden', !('vibrate' in navigator));
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
+$('themeToggle').onclick = function(){ 
+    var isDark = this.classList.contains('on');
+    setTheme(isDark ? 'light' : 'dark');
+};
+
+loadTheme();
 
 /* ---------- Son, voix, vibration ---------- */
 var ac = null;

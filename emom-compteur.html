@@ -243,7 +243,6 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
 
   <section class="board">
     <label class="opt sw-row"><span>Annonces vocales (exercice + répétitions)</span><input type="checkbox" class="sw" role="switch" id="voice"></label>
-    <label class="opt sw-row"><span>Prononcer les noms d'exercices en anglais</span><input type="checkbox" class="sw" role="switch" id="en"></label>
     <p class="hint">Garde l'écran allumé pendant la séance. Le mode silencieux de l'iPhone peut couper les bips.</p>
   </section>
 
@@ -322,8 +321,7 @@ var DEFAULT = {
   fin: { on: true, minutes: 1, items: [
     {n:'Push up', k:'time', t:60, u:'min'}, {n:'Plank', k:'time', t:60, u:'min'}
   ]},
-  voice: true,
-  en: true
+  voice: true
 };
 /* ---------- Gestion du thème clair/sombre ---------- */
 function loadTheme(){
@@ -651,7 +649,6 @@ function renderSetup(){
   $('warmVal').textContent = cfg.warm.minutes + ' min';
   $('rVal').textContent = cfg.rounds;
   $('voice').checked = !!cfg.voice;
-  $('en').checked = cfg.en !== false;
   $('tabEmom').setAttribute('aria-selected', String(!isAmrap()));
   $('tabAmrap').setAttribute('aria-selected', String(isAmrap()));
   $('emomBoard').classList.toggle('hidden', isAmrap());
@@ -687,7 +684,6 @@ $('finAdd').onclick = function(){ cfg.fin.items.push({n:'', r:null}); save(); re
 $('finOn').onchange = function(){ cfg.fin.on = this.checked; save(); renderSetup(); };
 $('emomAdd').onclick = function(){ cfg.emom.push({n:'', r:10}); save(); renderSetup(); };
 $('voice').onchange = function(){ cfg.voice = this.checked; save(); };
-$('en').onchange = function(){ cfg.en = this.checked; save(); };
 $('reset').onclick = function(){ cfg = clone(DEFAULT); save(); renderSetup(); };
 $('themeToggle').onclick = function(){
     var isDark = this.getAttribute('aria-checked') === 'true';
@@ -727,35 +723,52 @@ function longBeep(){ tone(660, 0.18, 0.35); tone(990, 0.5, 0.35, 0.2); }
 function doneBeep(){ tone(660,0.2,0.35); tone(880,0.2,0.35,0.25); tone(1175,0.6,0.35,0.5); }
 /* Voix fantaisie d'iOS / macOS (robot, chuchotement, chantées…) : jamais choisies.
    Sans ce filtre, la première voix anglaise de la liste est souvent « Albert ». */
-var ODD_VOICES = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy|eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley/i;
+var ODD_VOICES = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy/i;
+/* Voix qui existent en anglais ET en français sous le même nom (iOS / macOS) :
+   on en prend une pour que noms d'exercices (anglais) et répétitions (français) aient la même voix. */
+var SHARED_VOICES = ['eddy','flo','sandy','shelley','reed','rocko','grandma','grandpa'];
 var GOOD_VOICES = {
   en: /samantha|ava|allison|susan|karen|daniel|moira|tessa|serena|google us english|aria|jenny/i,
   fr: /am[ée]lie|thomas|audrey|aur[ée]lie|marie|google fran[çc]ais|denise|julie/i
 };
 var MAIN_LANG = {en:'en-us', fr:'fr-fr'};
-var voiceCache = {};
-/* meilleure voix pour la langue : naturelle, de préférence américaine (en) ou de France (fr) */
-function pickVoice(prefix){
+var voices = null, voicesN = -1;
+function voiceLang(v){ return (v.lang || '').toLowerCase().replace('_','-'); }
+function voiceScore(v, lg){
+  var sc = 0;
+  if(GOOD_VOICES[lg].test(v.name)) sc += 4;
+  if(/enhanced|premium|am[ée]lior[ée]e|natural/i.test(v.name)) sc += 2;
+  if(voiceLang(v) === MAIN_LANG[lg]) sc += 2;
+  if(v.localService) sc += 1;
+  return sc;
+}
+/* {en, fr} : la même voix dans les deux langues si le téléphone en a une, sinon la meilleure de chaque langue */
+function pickVoices(){
   try{
     var vs = speechSynthesis.getVoices();
-    var c = voiceCache[prefix];
-    if(c && c.n === vs.length) return c.v;
-    var best = null, bestSc = -1;
+    if(voices && voicesN === vs.length) return voices;
+    voicesN = vs.length;
+    /* par langue, puis par nom de voix (« Eddy (English (US)) » → « eddy ») */
+    var by = {en:{}, fr:{}};
     vs.forEach(function(v){
-      var l = (v.lang || '').toLowerCase().replace('_','-');
-      if(l.indexOf(prefix) !== 0 || ODD_VOICES.test(v.name)) return;
-      var sc = 0;
-      if(GOOD_VOICES[prefix] && GOOD_VOICES[prefix].test(v.name)) sc += 4;
-      if(/enhanced|premium|am[ée]lior[ée]e|natural/i.test(v.name)) sc += 2;
-      if(l === MAIN_LANG[prefix]) sc += 2;
-      if(v.localService) sc += 1;
-      if(sc > bestSc){ best = v; bestSc = sc; }
+      var lg = voiceLang(v).slice(0, 2);
+      if(!by[lg] || ODD_VOICES.test(v.name)) return;
+      var b = v.name.split(' (')[0].trim().toLowerCase(), cur = by[lg][b];
+      if(!cur || voiceScore(v, lg) > voiceScore(cur, lg)) by[lg][b] = v;
     });
-    voiceCache[prefix] = {n: vs.length, v: best};
-    return best;
+    var shared = SHARED_VOICES.filter(function(b){ return by.en[b] && by.fr[b]; });
+    var best = function(lg){
+      var out = null;
+      Object.keys(by[lg]).forEach(function(b){ if(!out || voiceScore(by[lg][b], lg) > voiceScore(out, lg)) out = by[lg][b]; });
+      return out;
+    };
+    voices = shared.length ? {en: by.en[shared[0]], fr: by.fr[shared[0]]} : {en: best('en'), fr: best('fr')};
+    return voices;
   }catch(e){}
-  return null;
+  return {en:null, fr:null};
 }
+/* iOS charge la liste des voix en différé : on la demande dès le départ */
+try{ if('speechSynthesis' in window) speechSynthesis.getVoices(); }catch(e){}
 /* parts : chaîne (français) ou liste de {t:texte, l:'fr'|'en'} */
 function say(parts, delay){
   if(!cfg.voice || !('speechSynthesis' in window)) return;
@@ -768,14 +781,14 @@ function say(parts, delay){
         var u = new SpeechSynthesisUtterance(p.t);
         u.lang = (p.l === 'en') ? 'en-US' : 'fr-FR';
         u.rate = (p.l === 'en') ? 1.0 : 1.05;
-        var v = pickVoice(p.l === 'en' ? 'en' : 'fr');
-        if(v) u.voice = v;
+        var v = pickVoices()[p.l === 'en' ? 'en' : 'fr'];
+        if(v){ u.voice = v; u.lang = v.lang; }
         speechSynthesis.speak(u);
       });
     }catch(e){}
   }, delay||0);
 }
-function exPart(name){ return {t: name || 'Exercice', l: (cfg.en === false) ? 'fr' : 'en'}; }
+function exPart(name){ return {t: name || 'Exercice', l: 'en'}; }
 
 /* ---------- Écran toujours allumé ---------- */
 var wakeLock = null;

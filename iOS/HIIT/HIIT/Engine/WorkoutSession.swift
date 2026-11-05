@@ -65,7 +65,7 @@ final class WorkoutSession {
             ? "Finisher · "
             : ""
         let round = next.kind == .emom && next.exerciseIndex == 0
-            ? " (round \(next.round ?? 1))"
+            ? " (tour \(next.round ?? 1))"
             : ""
         return "Ensuite : \(prefix)\(exercise.name.isEmpty ? "Exercice" : exercise.name) \(amount)\(round)"
     }
@@ -223,7 +223,7 @@ final class WorkoutSession {
             if segment.kind == .finisher, segment.exerciseIndex == 0 {
                 intro = "Finisher."
             } else if segment.kind == .emom, segment.exerciseIndex == 0 {
-                intro = "Round \(segment.round ?? 1)."
+                intro = "Tour \(segment.round ?? 1)."
             }
             if currentSegmentIndex == plan.segments.count - 1 {
                 intro += segment.duration == 60

@@ -192,15 +192,15 @@ h2{font-family:var(--display);font-weight:700;font-size:26px;margin:0;line-heigh
       <h2 id="hEmom">EMOM · 1 exercice par minute</h2>
     </div>
     <div class="row between" style="margin-top:12px">
-      <span>Nombre de rounds</span>
-      <div class="stepper" role="group" aria-label="Nombre de rounds">
-        <button type="button" id="rMinus" aria-label="Un round de moins">−</button>
+      <span>Nombre de tours</span>
+      <div class="stepper" role="group" aria-label="Nombre de tours">
+        <button type="button" id="rMinus" aria-label="Un tour de moins">−</button>
         <span id="rVal"></span>
-        <button type="button" id="rPlus" aria-label="Un round de plus">+</button>
+        <button type="button" id="rPlus" aria-label="Un tour de plus">+</button>
       </div>
     </div>
     <div id="emomList"></div>
-    <p class="hint">Touche l'unité pour choisir : <b>rép</b> = l'exercice dure 1 minute ; <b>sec</b> ou <b>min</b> = l'exercice dure ce temps-là, et la durée du round s'adapte.</p>
+    <p class="hint">Touche l'unité pour choisir : <b>rép</b> = l'exercice dure 1 minute ; <b>sec</b> ou <b>min</b> = l'exercice dure ce temps-là, et la durée du tour s'adapte.</p>
     <button type="button" class="add" id="emomAdd">Ajouter un exercice</button>
   </section>
 
@@ -928,7 +928,7 @@ function enter(i){
       li.appendChild(sm); ul.appendChild(li);
     });
     $('next').textContent = isAmrap() ? 'Ensuite : AMRAP ' + cfg.amrap.minutes + ' min'
-                                      : 'Ensuite : EMOM, round 1 · ' + (cfg.emom[0].n||'Exercice');
+                                      : 'Ensuite : EMOM, tour 1 · ' + (cfg.emom[0].n||'Exercice');
     say([{t:'Échauffement, ' + cfg.warm.minutes + ' minutes.', l:'fr'}].concat(listSpeech(cfg.warm.items)), 700);
   } else if(s.kind === 'amrap'){
     $('phase').textContent = 'AMRAP ' + cfg.amrap.minutes + ' min';
@@ -949,14 +949,14 @@ function enter(i){
     say([{t:'AMRAP, ' + cfg.amrap.minutes + ' minutes.', l:'fr'}].concat(listSpeech(cfg.amrap.items), [{t:'Partez !', l:'fr'}]), 700);
   } else {
     var fin = s.kind === 'fin';
-    $('phase').textContent = fin ? 'Finisher ' + (s.idx+1) + ' sur ' + cfg.fin.items.length : 'Round ' + s.round + ' sur ' + cfg.rounds;
+    $('phase').textContent = fin ? 'Finisher ' + (s.idx+1) + ' sur ' + cfg.fin.items.length : 'Tour ' + s.round + ' sur ' + cfg.rounds;
     setPicto($('exPicto'), s.ex.n);
     $('exName').textContent = s.ex.n || 'Exercice';
     $('exReps').textContent = (!isTime(s.ex) && s.ex.r) ? '× ' + s.ex.r + ' répétitions' : durShort(s.dur);
     if(!nx) $('next').textContent = s.dur===60 ? 'Dernière minute !' : 'Dernier exercice !';
     else if(nx.kind==='fin') $('next').textContent = 'Ensuite : ' + (nx.idx===0 ? 'Finisher · ' : '') + (nx.ex.n||'Exercice') + ' ' + itemShort(nx.ex, nx.dur);
-    else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + itemShort(nx.ex, nx.dur) + (nx.idx===0 ? ' (round ' + nx.round + ')' : '');
-    var intro = fin ? (s.idx === 0 ? 'Finisher. ' : '') : (s.idx === 0 ? 'Round ' + s.round + '. ' : '');
+    else $('next').textContent = 'Ensuite : ' + (nx.ex.n||'Exercice') + ' ' + itemShort(nx.ex, nx.dur) + (nx.idx===0 ? ' (tour ' + nx.round + ')' : '');
+    var intro = fin ? (s.idx === 0 ? 'Finisher. ' : '') : (s.idx === 0 ? 'Tour ' + s.round + '. ' : '');
     if(!nx) intro += s.dur===60 ? 'Dernière minute. ' : 'Dernier exercice. ';
     say([{t:intro, l:'fr'}].concat(speakEx(s.ex, s.dur)), 700);
   }
@@ -999,7 +999,7 @@ function finish(){
   var tours = run.amRounds + (run.amRounds>1 ? ' tours' : ' tour');
   say(isAmrap() ? 'Séance terminée. ' + tours + '. Bravo !' : 'Séance terminée. Bravo !', 800);
   $('doneText').textContent = 'Durée : ' + fmt(Math.round(totalMs/1000)) + ' · ' +
-    (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min : ' + tours : cfg.rounds + ' rounds d\'EMOM') +
+    (isAmrap() ? 'AMRAP ' + cfg.amrap.minutes + ' min : ' + tours : cfg.rounds + ' tours d\'EMOM') +
     (cfg.fin.on ? ' + finisher.' : '.');
   show('done');
 }

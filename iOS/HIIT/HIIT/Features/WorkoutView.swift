@@ -37,7 +37,7 @@ struct WorkoutHeader: View {
         return switch segment.kind {
         case .warmup: "Échauffement"
         case .amrap: "AMRAP \(session.configuration.amrap.minutes) min"
-        case .emom: "Round \(segment.round ?? 1) sur \(session.configuration.emomRounds)"
+        case .emom: "Tour \(segment.round ?? 1) sur \(session.configuration.emomRounds)"
         case .finisher:
             "Finisher \((segment.exerciseIndex ?? 0) + 1) sur \(session.configuration.finisher.exercises.count)"
         }
@@ -258,7 +258,7 @@ struct CompletionView: View {
         let tours = "\(session.amrapRounds) \(session.amrapRounds > 1 ? "tours" : "tour")"
         let main = session.configuration.mode == .amrap
             ? "AMRAP \(session.configuration.amrap.minutes) min : \(tours)"
-            : "\(session.configuration.emomRounds) rounds d’EMOM"
+            : "\(session.configuration.emomRounds) tours d’EMOM"
         return "Durée : \(WorkoutDurationFormatter.clock(session.plan.totalDuration)) · \(main)"
             + (session.configuration.finisher.isEnabled ? " + finisher." : ".")
     }

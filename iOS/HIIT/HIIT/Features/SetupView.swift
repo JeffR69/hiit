@@ -103,7 +103,7 @@ struct EMOMEditor: View {
             Text("EMOM · 1 exercice par minute")
                 .font(.title2.bold())
             Stepper(
-                "Nombre de rounds : \(store.configuration.emomRounds)",
+                "Nombre de tours : \(store.configuration.emomRounds)",
                 value: $store.configuration.emomRounds,
                 in: 1...20
             )
